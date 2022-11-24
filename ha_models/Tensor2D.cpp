@@ -40,15 +40,15 @@ Tensor Tensor2D::getGpuPointer() {
 }
 
 void Tensor2D::functionPass(Func f) {
-	funcPass(gpuPointer, f, size);
+	CudaKernels::funcPass(gpuPointer, f, size);
 }
 
 void Tensor2D::sumAllElements(Scalar sum) {
-	sumTensor(gpuPointer, (Tensor)sum, 1, size);
+	CudaKernels::sumTensor(gpuPointer, (Tensor)sum, 1, size);
 }
 
 void Tensor2D::normalize(Scalar sum) {
-	normalizeTensor(gpuPointer, (Tensor)sum, 1, size);
+	CudaKernels::normalizeTensor(gpuPointer, (Tensor)sum, 1, size);
 }
 
 const OperationDetails<Tensor2D,Tensor2D> Tensor2D::operator*(Tensor2D& t) {
@@ -62,10 +62,10 @@ const OperationDetails<Tensor2D, Tensor2D> Tensor2D::operator+(Tensor2D& t) {
 void Tensor2D::operator=(const OperationDetails<Tensor2D, Tensor2D>& o) {
 	switch (o.operation) {
 		case MUL2D:
-			mulTensor2D(gpuPointer, o.t1.gpuPointer, o.t2.gpuPointer, 1, lines, o.t1.columns, columns, true);
+			CudaKernels::mulTensor2D(gpuPointer, o.t1.gpuPointer, o.t2.gpuPointer, 1, lines, o.t1.columns, columns, true);
 			break;
 		case SUM:
-			addTensor(gpuPointer, o.t1.gpuPointer, o.t2.gpuPointer, size, size, true);
+			CudaKernels::addTensor(gpuPointer, o.t1.gpuPointer, o.t2.gpuPointer, size, size, true);
 			break;
 	}
 }

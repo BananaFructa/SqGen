@@ -6,13 +6,21 @@
 class Layer {
 public:
 
+	virtual void free() {};
+	virtual void freeLayers() {};
+
+	virtual void setPool(size_t newSize) {};
+
 	virtual size_t getInputSize() { return 0; };
 	virtual size_t getOutputSize() { return 0; };
+
+	virtual void rndParams() {};
+	virtual void loadParams(Tensor2D params[]) {};
+
 	virtual unsigned short stepCount() { return 0; };
 	virtual unsigned short stepAsync(TensorPool2D& input) { return 0; };
+
 	virtual TensorPool2D& getValue() { return TensorPool2D::EmptyPool; };
-	virtual unsigned short stepAsyncPool(TensorPool2D& poolInput) { return 0; };
-	virtual void resizePool(size_t newSize) {};
 
 };
 

@@ -1,10 +1,15 @@
 #include "NNModel.hpp"
 
+NNModel::NNModel(size_t poolSize) {
+	this->poolSize = poolSize;
+}
+
 NNModel::~NNModel() {
 	for (size_t i = 0; i < layers.size(); i++) delete layers[i];
 }
 
 void NNModel::addLayer(Layer* layer) {
+	layer->setPool(poolSize);
 	layers.push_back(layer);
 }
 
@@ -18,6 +23,14 @@ void NNModel::predict(TensorPool2D& input) {
 	}
 }
 
+void NNModel::free() {
+	for (int i = 0; i < layers.size(); i++) layers[i]->free();
+}
+
+void NNModel::freeLayers() {
+	for (int i = 0; i < layers.size(); i++) layers[i]->freeLayers();
+}
+
 size_t NNModel::layerCount() {
 	return layers.size();
 }
@@ -26,8 +39,6 @@ TensorPool2D& NNModel::getPrediction() {
 	return layers[layerCount() - 1]->getValue();
 }
 
-Layer* NNModel::swapLayers(Layer* layer, size_t index) {
-	Layer* old = layers[index];
-	layers[index] = layer;
-	return old;
+void NNModel::randomize() {
+	for (int i = 0; i < layers.size(); i++) layers[i]->rndParams();
 }

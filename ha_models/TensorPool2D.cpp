@@ -1,5 +1,7 @@
 #include "TensorPool2D.hpp"
 
+#include <cmath>
+
 TensorPool2D TensorPool2D::EmptyPool = TensorPool2D();
 
 TensorPool2D::TensorPool2D() {
@@ -42,15 +44,15 @@ Tensor TensorPool2D::getGpuPointer() {
 }
 
 void TensorPool2D::functionPass(Func f) {
-	funcPass(pool, f, size);
+	CudaKernels::funcPass(pool, f, size);
 }
 
 void TensorPool2D::sumAllElements(Tensor sum) {
-	sumTensor(pool, sum, poolSize, elementSize);
+	CudaKernels::sumTensor(pool, sum, poolSize, elementSize);
 }
 
 void TensorPool2D::normalize(Tensor sum) {
-	normalizeTensor(pool, sum, poolSize, elementSize);
+	CudaKernels::normalizeTensor(pool, sum, poolSize, elementSize);
 }
 
 const OperationDetails<TensorPool2D, TensorPool2D> TensorPool2D::operator*(TensorPool2D& t) {
@@ -74,10 +76,10 @@ const OperationDetails<TensorPool2D, Tensor2D> TensorPool2D::operator+(Tensor2D&
 void TensorPool2D::operator=(const OperationDetails<TensorPool2D, Tensor2D>& o) {
 	switch (o.operation) {
 		case MUL2D:
-			mulTensor2D(pool, o.t1.pool, o.t2.getGpuPointer(), poolSize, lines, o.t1.columns, columns, true);
+			CudaKernels::mulTensor2D(pool, o.t1.pool, o.t2.getGpuPointer(), poolSize, lines, o.t1.columns, columns, true);
 			break;
 		case SUM:
-			addTensor(pool, o.t1.pool, o.t2.getGpuPointer(), elementSize, size, true);
+			CudaKernels::addTensor(pool, o.t1.pool, o.t2.getGpuPointer(), elementSize, size, true);
 			break;
 	}
 }
@@ -85,10 +87,10 @@ void TensorPool2D::operator=(const OperationDetails<TensorPool2D, Tensor2D>& o) 
 void TensorPool2D::operator=(const OperationDetails<TensorPool2D, TensorPool2D>& o) {
 	switch (o.operation) {
 		case MUL2D:
-			mulTensor2D(pool, o.t1.pool, o.t2.pool, poolSize, lines, o.t1.columns, columns, false);
+			CudaKernels::mulTensor2D(pool, o.t1.pool, o.t2.pool, std::min(o.t1.poolSize,o.t2.poolSize), lines, o.t1.columns, columns, false);
 			break;
 		case SUM:
-			addTensor(pool, o.t1.pool, o.t2.pool, elementSize, size, false);
+			CudaKernels::addTensor(pool, o.t1.pool, o.t2.pool, elementSize, size, false);
 			break;
 	}
 }

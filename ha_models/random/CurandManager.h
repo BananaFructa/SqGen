@@ -5,19 +5,17 @@
 #include <vector>
 #include <thread>
 
-struct AllocatedInterval {
-public:
-	size_t start;
-	size_t end;
-};
-
 struct CurandManager {
 
 	cudaStream_t randStream;
 	curandState_t* curandStatePool;
+	size_t poolSize = 0;
+	unsigned long seed;
+	
+	CurandManager(size_t statePoolSize, unsigned long seed);
 
-	std::vector<AllocatedInterval> allocatedIntervals;
+	void randomizeTensorUniform(Tensor t, size_t size, float low, float high);
+	void rndOffsetTensorUniform(Tensor t, size_t size, float prob, float low, float high);
 
-
-
+	~CurandManager();
 };
