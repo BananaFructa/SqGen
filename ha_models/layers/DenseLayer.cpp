@@ -28,7 +28,7 @@ unsigned short DenseLayer::stepCount() {
 	return DENSE_LAYER_STEP_COUNT;
 }
 
-unsigned short DenseLayer::stepAsync(TensorPool2D& input) {
+unsigned short DenseLayer::stepAsync(Tensor& input) {
 	switch (step++) {
 		case 0:
 			layer = input * weights;
@@ -44,22 +44,25 @@ unsigned short DenseLayer::stepAsync(TensorPool2D& input) {
 	return step;
 }
 
-TensorPool2D& DenseLayer::getValue() {
+Tensor& DenseLayer::getValue() {
 	return layer;
 }
 
 void DenseLayer::setPool(size_t newSize) {
 	layer.free();
-	layer.init(newSize, 1, size);
+	layer.init(Size(3, 1, size, newSize));
 }
 
-void DenseLayer::rndParams() {
-	weights.free();
-	biases.free();
-	// TODO: implementation
+void DenseLayer::rndParams(CurandManager& curandManager) {
+	if (weights.size.size == 0) {
+		weights.init(Size(2, inputSize, size));
+		biases.init(Size(2, 1, size));
+	}
+	curandManager.randomizeTensorUniform(weights, -1, 1);
+	curandManager.randomizeTensorUniform(biases, -1, 1);
 }
 
-void DenseLayer::loadParams(Tensor2D params[]) {
+void DenseLayer::loadParams(Tensor params[]) {
 	weights = params[0];
 	biases = params[1];
 }

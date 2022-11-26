@@ -1,17 +1,16 @@
 #pragma once
 
 #include "Layer.hpp"
-
-#include "../TensorPool2D.hpp"
+#include "../random/CurandManager.h"
 
 #define DENSE_LAYER_STEP_COUNT 3
 
 class DenseLayer : public Layer {
 private:
 
-	TensorPool2D layer;
-	Tensor2D weights;
-	Tensor2D biases;
+	Tensor layer;
+	Tensor weights;
+	Tensor biases;
 
 public:
 
@@ -31,11 +30,11 @@ public:
 	size_t getOutputSize();
 
 	unsigned short stepCount();
-	unsigned short stepAsync(TensorPool2D& input);
+	unsigned short stepAsync(Tensor& input);
 
-	void rndParams();
-	void loadParams(Tensor2D params[]);
+	void rndParams(CurandManager& curandManager);
+	void loadParams(Tensor params[]);
 
-	TensorPool2D& getValue();
+	Tensor& getValue();
 
 };

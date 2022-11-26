@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../cuda_kernels/kernels.cuh"
+#include "../Tensor.hpp"
 
 #include <vector>
 #include <thread>
@@ -14,8 +15,10 @@ struct CurandManager {
 	
 	CurandManager(size_t statePoolSize, unsigned long seed);
 
-	void randomizeTensorUniform(Tensor t, size_t size, float low, float high);
-	void rndOffsetTensorUniform(Tensor t, size_t size, float prob, float low, float high);
+	void randomizeTensorUniform(Tensor_DEVICE t, size_t size, float low, float high);
+	void rndOffsetTensorUniform(Tensor_DEVICE t, size_t size, float prob, float low, float high);
+	void randomizeTensorUniform(Tensor& t, float low, float high);
+	void rndOffsetTensorUniform(Tensor& t, float prob, float low, float high);
 
 	~CurandManager();
 };

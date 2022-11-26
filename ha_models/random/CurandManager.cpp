@@ -13,7 +13,7 @@ CurandManager::CurandManager(size_t statePoolSize,unsigned long seed) {
 	bindStream(DEFAULT_STREAM);
 }
 
-void CurandManager::randomizeTensorUniform(Tensor t, size_t size, float low, float high) {
+void CurandManager::randomizeTensorUniform(Tensor_DEVICE t, size_t size, float low, float high) {
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
@@ -27,7 +27,7 @@ void CurandManager::randomizeTensorUniform(Tensor t, size_t size, float low, flo
 	bindStream(DEFAULT_STREAM);
 }
 
-void CurandManager::rndOffsetTensorUniform(Tensor t, size_t size, float prob, float low, float high) {
+void CurandManager::rndOffsetTensorUniform(Tensor_DEVICE t, size_t size, float prob, float low, float high) {
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
@@ -39,6 +39,14 @@ void CurandManager::rndOffsetTensorUniform(Tensor t, size_t size, float prob, fl
 	}
 	CudaKernels::rndOffsetTensorUniform(curandStatePool, t + begin, size, prob, low, high);
 	bindStream(DEFAULT_STREAM);
+}
+
+void CurandManager::randomizeTensorUniform(Tensor& t, float low, float high) {
+	randomizeTensorUniform(t.getGpuPointer(), t.size.size, low, high);
+}
+
+void CurandManager::rndOffsetTensorUniform(Tensor& t, float prob, float low, float high) {
+	rndOffsetTensorUniform(t.getGpuPointer(), t.size.size, prob, low, high);
 }
 
 CurandManager::~CurandManager() {

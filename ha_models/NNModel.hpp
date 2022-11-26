@@ -5,7 +5,7 @@
 
 struct NNModel {
 
-	std::vector<Layer*> layers;
+	std::vector<Layer> layers;
 
 public:
 
@@ -13,17 +13,16 @@ public:
 
 
 	NNModel(size_t poolSize);
-	~NNModel();
 
-	void addLayer(Layer* layer);
-	bool takeAsyncStep(TensorPool2D& input, size_t currentLayer);
-	void predict(TensorPool2D& input);
+	void addLayer(Layer layer);
+	bool takeAsyncStep(Tensor& input, size_t currentLayer);
+	void predict(Tensor& input);
 	void free();
 	void freeLayers();
 	size_t layerCount();
-	TensorPool2D& getPrediction();
+	Tensor& getPrediction();
 
-	void randomize();
+	void randomizeUniform(CurandManager& curandManager);
 
 
 };

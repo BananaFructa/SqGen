@@ -12,7 +12,7 @@
 #define NULL_TENSOR 0
 #define DEFAULT_STREAM 0
 
-typedef TENSOR_TYPE* Tensor;
+typedef TENSOR_TYPE* Tensor_DEVICE;
 typedef TENSOR_TYPE* Scalar;
 typedef TENSOR_TYPE* Tensor_HOST;
 
@@ -28,10 +28,10 @@ void createStream(cudaStream_t* stream);
 void destroyStream(cudaStream_t* stream);
 
 // Memory managment
-Tensor allocateTensor(size_t size);
-void copyTensorFromDevice(Tensor_HOST tHost, Tensor t, size_t size);
-void copyTensorFromHost(Tensor_HOST tHost, Tensor t, size_t size);
-void freeTensor(Tensor t);
+Tensor_DEVICE allocateTensor(size_t size);
+void copyTensorFromDevice(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);
+void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);
+void freeTensor(Tensor_DEVICE t);
 
 void gpuSync();
 void gpuSyncStream(cudaStream_t* stream);
@@ -39,17 +39,17 @@ void gpuSyncStream(cudaStream_t* stream);
 namespace CudaKernels {
 
 	// Tensor manipulation
-	void normalizeTensor(Tensor t, Tensor sum, size_t poolSize, size_t elemSize);
-	void funcPass(Tensor t, Func f, size_t size);
+	void normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
+	void funcPass(Tensor_DEVICE t, Func f, size_t size);
 
-	void sumTensor(Tensor t, Tensor sum, size_t poolSize, size_t elemSize);
-	void addTensor(Tensor tTarget, Tensor tSource1, Tensor tSource2, size_t elemSize, size_t size, bool single);
-	void mulTensor2D(Tensor tTarget, Tensor tSource1, Tensor tSource2, size_t poolSize, size_t l, size_t cl, size_t c, bool single);
+	void sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
+	void addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2);
+	void mulTensor2D(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t poolSize1, size_t poolSize2, size_t l, size_t cl, size_t c);
 
 	// curand
 	void curandStateAlloc(curandState_t* state, size_t size, unsigned long seed);
-	void randomizeTensorUniform(curandState_t* state, Tensor t, size_t size, float lowerRange, float higherRange);
-	void rndOffsetTensorUniform(curandState_t* state, Tensor t, size_t size, float prob, float lowerRange, float higherRange);
+	void randomizeTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float lowerRange, float higherRange);
+	void rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange);
 
 }
 

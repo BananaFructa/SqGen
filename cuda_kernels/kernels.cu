@@ -4,12 +4,15 @@
 
 #include <stdio.h>
 
+#define MAX(a,b) (a > b ? a : b)
+
 cudaStream_t *currentStream = NULL;
 
-__global__ void addTensor_kernel(Tensor tTarget, Tensor tSource1, Tensor tSource2, size_t elemSize, size_t totalSize, bool single) {
+__global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-	if (i < totalSize) {
-		tTarget[i] = tSource1[i] + tSource2[(single ? i % elemSize : i)];
+	size_t maxSize = max(elemSize1, elemSize2);
+	if (i < maxSize) {
+		tTarget[i] = tSource1[i % elemSize1] + tSource2[i % elemSize2];
 	}
 }
 
@@ -25,37 +28,36 @@ __global__ void addTensor_kernel(Tensor tTarget, Tensor tSource1, Tensor tSource
 * @param c = The number of columns of all the tensors in the second pool
 * @param single = True if tSource2 is a single tensor and every tensor from tSource1 should be multiplied with it
 */
-__global__ void mulTensor2D_kernel(Tensor tTarget,
-								   Tensor tSource1,
-	                               Tensor tSource2,
-	                               size_t poolSize,
+__global__ void mulTensor2D_kernel(Tensor_DEVICE tTarget,
+								   Tensor_DEVICE tSource1,
+	                               Tensor_DEVICE tSource2,
+	                               size_t poolSize1,
+								   size_t poolSize2,
 								   size_t prodLc,
 	                               size_t l,
 	                               size_t cl,
-	                               size_t c,
-								   bool single
+	                               size_t c
 ) {
 	size_t t = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = t % prodLc;
 	size_t poolId = t / prodLc;
-	size_t tensorNumber = (poolId) * prodLc;
 
-	if (poolId < poolSize) {
+	if (poolId < max(poolSize1, poolSize2)) {
 
 		size_t line = tensorStep / c;
 		size_t column = tensorStep % c;
 		TENSOR_TYPE sum = 0;
 
 		for (size_t i = 0; i < cl; i++) {
-			sum += tSource1[tensorNumber + i + line * cl] * tSource2[(single ? 0 :tensorNumber) + column + i * c];
+			sum += tSource1[(poolId % poolSize1) * prodLc + i + line * cl] * tSource2[(poolId % poolSize2) * prodLc + column + i * c];
 		}
 
-		tTarget[tensorNumber + column + line * c] = sum;
+		tTarget[poolId * prodLc + column + line * c] = sum;
 
 	}
 }
 
-__global__ void funcPass_kernel(Tensor t, Func f, size_t size) {
+__global__ void funcPass_kernel(Tensor_DEVICE t, Func f, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
 		switch (f) {
@@ -76,7 +78,7 @@ __global__ void funcPass_kernel(Tensor t, Func f, size_t size) {
 	}
 }
 
-__global__ void normalizeTensor_kernel(Tensor t, Tensor sum, size_t poolSize, size_t elemSize) {
+__global__ void normalizeTensor_kernel(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = i % elemSize;
 	size_t poolId = i / elemSize;
@@ -86,7 +88,7 @@ __global__ void normalizeTensor_kernel(Tensor t, Tensor sum, size_t poolSize, si
 	}
 }
 
-__global__ void sumTensor_kernel(Tensor t, Tensor sum, size_t poolSize, size_t elemSize) {
+__global__ void sumTensor_kernel(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = i % elemSize;
 	size_t poolId = i / elemSize;
@@ -103,22 +105,22 @@ __global__ void curandInit_kernel(curandState_t* state, size_t size, unsigned lo
 	}
 }
 
-__global__ void randomizeTensorUniform_kernel(curandState_t* state, Tensor t, size_t size, float low, float absoluteDifference) {
+__global__ void randomizeTensorUniform_kernel(curandState_t* state, Tensor_DEVICE t, size_t size, float low, float absoluteDifference) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
-		t[i] = curand_uniform(&state[i]) * absoluteDifference - low;
+		t[i] = curand_uniform(&state[i]) * absoluteDifference + low;
 	}
 }
 
-__global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor t, size_t size, float prob, float low, float absoluteDifference) {
+__global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float low, float absoluteDifference) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size && curand_uniform(&state[i]) <= prob) {
-		t[i] += curand_uniform(&state[i]) * absoluteDifference - low;
+		t[i] += curand_uniform(&state[i]) * absoluteDifference + low;
 	}
 }
 
-Tensor allocateTensor(size_t size) {
-	Tensor tensor;
+Tensor_DEVICE allocateTensor(size_t size) {
+	Tensor_DEVICE tensor;
 	cudaMalloc(&tensor, size * sizeof(TENSOR_TYPE));
 	return tensor;
 }
@@ -127,27 +129,27 @@ void bindTensor(cudaStream_t *stream) {
 	currentStream = stream;
 }
 
-void freeTensor(Tensor t) {
+void freeTensor(Tensor_DEVICE t) {
 	cudaFree(t);
 }
 
-void copyTensorFromDevice(Tensor_HOST tHost,Tensor t, size_t size) {
+void copyTensorFromDevice(Tensor_HOST tHost,Tensor_DEVICE t, size_t size) {
 	cudaMemcpy(tHost, t, size * sizeof(TENSOR_TYPE), cudaMemcpyDeviceToHost);
 }
 
-void copyTensorFromHost(Tensor_HOST tHost, Tensor t, size_t size) {
+void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size) {
 	cudaMemcpy(t, tHost, size * sizeof(TENSOR_TYPE), cudaMemcpyHostToDevice);
 }
 
-void CudaKernels::addTensor(Tensor tTarget, Tensor tSource1, Tensor tSource2,size_t elemSize, size_t size, bool single) {
+void CudaKernels::addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t elemSize1,size_t elemSize2) {
 
 	dim3 threadSize(256);
-	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
+	dim3 blockSize((MAX(elemSize1,elemSize2) + threadSize.x - 1) / threadSize.x);
 
-	addTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, elemSize, size, single);
+	addTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, elemSize1, elemSize2);
 }
 
-void CudaKernels::funcPass(Tensor t, Func f, size_t size) {
+void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
 
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
@@ -155,7 +157,7 @@ void CudaKernels::funcPass(Tensor t, Func f, size_t size) {
 	funcPass_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, f, size);
 }
 
-void CudaKernels::normalizeTensor(Tensor t, Tensor sum, size_t poolSize, size_t elemSize) {
+void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 
 	dim3 threadSize(256);
 	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
@@ -163,18 +165,20 @@ void CudaKernels::normalizeTensor(Tensor t, Tensor sum, size_t poolSize, size_t 
 	normalizeTensor_kernel <<< blockSize,threadSize, 0, (currentStream ? *currentStream : 0) >>> (t,sum,poolSize,elemSize);
 }
 
-void CudaKernels::sumTensor(Tensor t, Tensor sum, size_t poolSize, size_t elemSize) {
+void CudaKernels::sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 	dim3 threadSize(256);
 	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
 
 	sumTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, sum, poolSize, elemSize);
 }
 
-void CudaKernels::mulTensor2D(Tensor tTarget,Tensor tSource1, Tensor tSource2,size_t poolSize, size_t l, size_t cl , size_t c, bool single) {
-	dim3 threadSize(256);
-	dim3 blockSize((l * c * poolSize + threadSize.x - 1) / threadSize.x);
+void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t poolSize1,size_t poolSize2, size_t l, size_t cl , size_t c) {
+	size_t processCountPerTensor = l * c;
 	
-	mulTensor2D_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize,l*c, l, cl, c,single);
+	dim3 threadSize(256);
+	dim3 blockSize((processCountPerTensor * MAX(poolSize1,poolSize2) + threadSize.x - 1) / threadSize.x);
+	
+	mulTensor2D_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize1,poolSize2,processCountPerTensor, l, cl, c);
 }
 
 void CudaKernels::curandStateAlloc(curandState_t* state, size_t size, unsigned long seed) {
@@ -185,14 +189,14 @@ void CudaKernels::curandStateAlloc(curandState_t* state, size_t size, unsigned l
 	curandInit_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (state, size, seed);
 }
 
-void CudaKernels::randomizeTensorUniform(curandState_t* state, Tensor t, size_t size, float lowerRange, float higherRange) {
+void CudaKernels::randomizeTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float lowerRange, float higherRange) {
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 	
 	randomizeTensorUniform_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (state, t, size, lowerRange, fabsf(lowerRange - higherRange));
 }
 
-void CudaKernels::rndOffsetTensorUniform(curandState_t* state, Tensor t, size_t size, float prob, float lowerRange, float higherRange) {
+void CudaKernels::rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange) {
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 
