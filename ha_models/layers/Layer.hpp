@@ -3,11 +3,17 @@
 #include "../Tensor.hpp"
 #include "../random/CurandManager.h"
 
+enum Activation {
+	ReLU,
+	SIGMOID,
+	TANH,
+	SOFTMAX
+};
+
 class Layer {
 public:
 
 	virtual void free() {};
-	virtual void freeLayers() {};
 
 	virtual void setPool(size_t newSize) {};
 
@@ -15,7 +21,7 @@ public:
 	virtual size_t getOutputSize() { return 0; };
 
 	virtual void rndParams(CurandManager& curandManager) {};
-	virtual void loadParams(Tensor params[]) {};
+	virtual size_t loadParams(Tensor params[]) { return 0; };
 
 	virtual unsigned short stepCount() { return 0; };
 	virtual unsigned short stepAsync(Tensor& input) { return 0; };
@@ -23,4 +29,3 @@ public:
 	virtual Tensor& getValue() { return Tensor::EmptyTensor; };
 
 };
-

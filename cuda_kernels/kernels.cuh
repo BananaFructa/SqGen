@@ -17,10 +17,10 @@ typedef TENSOR_TYPE* Scalar;
 typedef TENSOR_TYPE* Tensor_HOST;
 
 enum Func {
-	ReLU,
-	SIGMOID,
-	TANH,
-	EXP
+	KERNEL_ReLU,
+	KERNEL_SIGMOID,
+	KERNEL_TANH,
+	KERNEL_EXP
 };
 
 void bindStream(cudaStream_t* stream);
@@ -43,8 +43,9 @@ namespace CudaKernels {
 	void funcPass(Tensor_DEVICE t, Func f, size_t size);
 
 	void sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
-	void addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2);
-	void mulTensor2D(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t poolSize1, size_t poolSize2, size_t l, size_t cl, size_t c);
+	void addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand);
+	void hadamardTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand);
+	void mulTensor2D(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t poolSize1, size_t poolSize2, size_t l, size_t cl, size_t c, int operand);
 
 	// curand
 	void curandStateAlloc(curandState_t* state, size_t size, unsigned long seed);

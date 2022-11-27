@@ -8,11 +8,19 @@
 
 cudaStream_t *currentStream = NULL;
 
-__global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2) {
+__global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t maxSize = max(elemSize1, elemSize2);
 	if (i < maxSize) {
-		tTarget[i] = tSource1[i % elemSize1] + tSource2[i % elemSize2];
+		tTarget[i] = tSource1[i % elemSize1] + tSource2[i % elemSize2] + operand * tTarget[i];
+	}
+}
+
+__global__ void hadamardTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t maxSize = max(elemSize1, elemSize2);
+	if (i < maxSize) {
+		tTarget[i] = tSource1[i % elemSize1] * tSource2[i % elemSize2] + operand * tTarget[i];
 	}
 }
 
@@ -28,15 +36,16 @@ __global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, 
 * @param c = The number of columns of all the tensors in the second pool
 * @param single = True if tSource2 is a single tensor and every tensor from tSource1 should be multiplied with it
 */
-__global__ void mulTensor2D_kernel(Tensor_DEVICE tTarget,
-								   Tensor_DEVICE tSource1,
-	                               Tensor_DEVICE tSource2,
-	                               size_t poolSize1,
-								   size_t poolSize2,
-								   size_t prodLc,
-	                               size_t l,
-	                               size_t cl,
-	                               size_t c
+__global__ void mulTensor_kernel(Tensor_DEVICE tTarget,
+								 Tensor_DEVICE tSource1,
+	                             Tensor_DEVICE tSource2,
+	                             size_t poolSize1,
+								 size_t poolSize2,
+								 size_t prodLc,
+	                             size_t l,
+	                             size_t cl,
+	                             size_t c,
+								 int operand
 ) {
 	size_t t = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = t % prodLc;
@@ -49,32 +58,41 @@ __global__ void mulTensor2D_kernel(Tensor_DEVICE tTarget,
 		TENSOR_TYPE sum = 0;
 
 		for (size_t i = 0; i < cl; i++) {
-			sum += tSource1[(poolId % poolSize1) * prodLc + i + line * cl] * tSource2[(poolId % poolSize2) * prodLc + column + i * c];
+			sum += tSource1[(poolId % poolSize1) * prodLc + line + i * l] * tSource2[(poolId % poolSize2) * prodLc + i + column * cl];
 		}
 
-		tTarget[poolId * prodLc + column + line * c] = sum;
+		size_t targetId = poolId * prodLc + line + column * l;
+		tTarget[targetId] = sum + operand * tTarget[targetId];
 
 	}
 }
 
-__global__ void funcPass_kernel(Tensor_DEVICE t, Func f, size_t size) {
+__global__ void funcPassReLU_kernel(Tensor_DEVICE t, Func f, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
-		switch (f) {
-			case ReLU:
-				bool p = t[i] > 0;
-				t[i] = t[i] * p + t[i] * 0.1f * !p;
-				break;
-			case SIGMOID:
-				t[i] = 1.0f / (1.0f + expf(-(float)t[i]));
-				break;
-			case TANH:
-				t[i] = tanhf((float)t[i]);
-				break;
-			case EXP:
-				t[i] = expf((float)t[i]);
-				break;
-		}
+		bool p = t[i] > 0;
+		t[i] = t[i] * p + t[i] * 0.1f * !p;
+	}
+}
+
+__global__ void funcPassSigmoid_kernel(Tensor_DEVICE t, Func f, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = 1.0f / (1.0f + expf(-(float)t[i]));
+	}
+}
+
+__global__ void funcPassTanh_kernel(Tensor_DEVICE t, Func f, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = tanhf((float)t[i]);
+	}
+}
+
+__global__ void funcPassExp_kernel(Tensor_DEVICE t, Func f, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = expf((float)t[i]);
 	}
 }
 
@@ -141,12 +159,20 @@ void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size) {
 	cudaMemcpy(t, tHost, size * sizeof(TENSOR_TYPE), cudaMemcpyHostToDevice);
 }
 
-void CudaKernels::addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t elemSize1,size_t elemSize2) {
+void CudaKernels::addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t elemSize1,size_t elemSize2,int operand) {
 
 	dim3 threadSize(256);
 	dim3 blockSize((MAX(elemSize1,elemSize2) + threadSize.x - 1) / threadSize.x);
 
-	addTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, elemSize1, elemSize2);
+	addTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, elemSize1, elemSize2,operand);
+}
+
+void CudaKernels::hadamardTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
+
+	dim3 threadSize(256);
+	dim3 blockSize((MAX(elemSize1, elemSize2) + threadSize.x - 1) / threadSize.x);
+
+	hadamardTensor_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (tTarget, tSource1, tSource2, elemSize1, elemSize2,operand);
 }
 
 void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
@@ -154,7 +180,20 @@ void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 
-	funcPass_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, f, size);
+	switch (f) {
+		case KERNEL_ReLU:
+			funcPassReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			break;
+		case KERNEL_SIGMOID:
+			funcPassSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			break;
+		case KERNEL_TANH:
+			funcPassTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			break;
+		case KERNEL_EXP:
+			funcPassExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			break;
+	}
 }
 
 void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
@@ -172,13 +211,13 @@ void CudaKernels::sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize,
 	sumTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, sum, poolSize, elemSize);
 }
 
-void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t poolSize1,size_t poolSize2, size_t l, size_t cl , size_t c) {
+void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t poolSize1,size_t poolSize2, size_t l, size_t cl , size_t c,int operand) {
 	size_t processCountPerTensor = l * c;
 	
 	dim3 threadSize(256);
 	dim3 blockSize((processCountPerTensor * MAX(poolSize1,poolSize2) + threadSize.x - 1) / threadSize.x);
 	
-	mulTensor2D_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize1,poolSize2,processCountPerTensor, l, cl, c);
+	mulTensor_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize1,poolSize2,processCountPerTensor, l, cl, c,operand);
 }
 
 void CudaKernels::curandStateAlloc(curandState_t* state, size_t size, unsigned long seed) {

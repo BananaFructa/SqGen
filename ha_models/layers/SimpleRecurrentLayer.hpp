@@ -1,26 +1,31 @@
 #pragma once
 
 #include "Layer.hpp"
-#include "../random/CurandManager.h"
 
-class DenseLayer : public Layer {
+class SimpleRecurrentLayer : public Layer {
 private:
 
-	Tensor layer;
-	Tensor weights;
-	Tensor biases;
+	Tensor weightsInput;
 
-	// Used for running softmax
-	Tensor auxSumMem;
+	Tensor weightsHiddenPast;
+	Tensor weightsHiddenPresent;
+
+	Tensor biasesHidden;
+	Tensor biasesOutput;
+
+	Tensor hiddenLayer;
+	Tensor layer;
 
 public:
 
 	size_t size = 0;
 	size_t inputSize = 0;
 	unsigned short step = 0;
-	Activation activation;
 
-	DenseLayer(size_t getInputSize, size_t size, Activation activation);
+	Activation activation;
+	Activation hiddenActivation;
+
+	SimpleRecurrentLayer(size_t inputSize, size_t size, Activation activation, Activation hiddenActivation);
 
 	void free();
 
@@ -38,3 +43,4 @@ public:
 	Tensor& getValue();
 
 };
+

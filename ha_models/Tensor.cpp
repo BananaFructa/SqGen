@@ -1,5 +1,42 @@
 #include "Tensor.hpp"
 
+// Too many paramters so these are some functions to wrap everything up
+void callMulKernerl(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
+	CudaKernels::mulTensor2D(
+		tt.getGpuPointer(),
+		t1.getGpuPointer(),
+		t2.getGpuPointer(),
+		t1.size.bidimensionalSize,
+		t2.size.bidimensionalSize,
+		t1.size.getDimSize(0),
+		t1.size.getDimSize(1),
+		t2.size.getDimSize(1),
+		operand
+	);
+}
+
+void callAddKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
+	CudaKernels::addTensor(
+		tt.getGpuPointer(),
+		t1.getGpuPointer(),
+		t2.getGpuPointer(),
+		t1.size.size,
+		t2.size.size,
+		operand
+	);
+}
+
+void callHadmaradKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
+	CudaKernels::hadamardTensor(
+		tt.getGpuPointer(),
+		t1.getGpuPointer(),
+		t2.getGpuPointer(),
+		t1.size.size,
+		t2.size.size,
+		operand
+	);
+}
+
 Tensor Tensor::EmptyTensor = Tensor();
 
 Tensor::Tensor() {
@@ -39,27 +76,27 @@ Scalar Tensor::getElementAt(size_t pos,...) {
 
 	for (size_t i = 0; i < size.dim; i++) {
 
-		if (size.dim > 1) {
-			/* 
-			* Just for the sake of better syntax when declaring tensors it is better to have for 2 dim or
-			* larger tensors the 2D respective columns one after another in memory and not the lines
-			*/
-			if (i == 0) linearPos += size.getDimSize(1);
-			if (i == 1) linearPos += size.getDimSize(0) * va_arg(argList, size_t);
-		}
-		else {
-			size_t mul = 1;
+		size_t mul = 1;
 
-			for (size_t j = 0; j < i; j++) mul *= size.getDimSize(j);
+		for (size_t j = 0; j < i; j++) mul *= size.getDimSize(j);
 
-			linearPos += va_arg(argList, size_t) * mul;
-		}
-
+		linearPos += va_arg(argList, size_t) * mul;
 	}
 
 	va_end(argList);
 
 	return gpuPointer + linearPos;
+}
+
+Tensor Tensor::slice(size_t begin, size_t end) {
+	size_t subSize = size.size / size.getDimSize(size.dim - 1);
+	size_t* sizes = new size_t[size.dim];
+	for (int i = 0; i < size.dim - 1; i++) sizes[i] = size.getDimSize(i);
+	sizes[size.dim - 1] = end - begin;
+	Tensor sliced;
+	sliced.gpuPointer = gpuPointer + subSize * begin;
+	sliced.size = Size(size.dim, sizes);
+	return sliced;
 }
 
 Tensor_DEVICE Tensor::getGpuPointer() {
@@ -96,28 +133,49 @@ const OperationDetails<Tensor, Tensor> Tensor::operator+(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::SUM);
 }
 
+const OperationDetails<Tensor, Tensor> Tensor::operator%(Tensor& t)
+{
+	return OperationDetails<Tensor, Tensor>(*this, t, Op::HADAMARD);
+}
+
 void Tensor::operator=(const OperationDetails<Tensor, Tensor>& o) {
 	switch (o.operation) {
 		case MUL2D:
-			CudaKernels::mulTensor2D(
-				gpuPointer,
-				o.t1.gpuPointer,
-				o.t2.gpuPointer,
-				o.t1.size.bidimensionalSize,
-				o.t2.size.bidimensionalSize,
-				o.t1.size.getDimSize(0),
-				o.t1.size.getDimSize(1),
-				o.t2.size.getDimSize(1)
-			);
+			callMulKernerl(*this, o.t1, o.t2, 0);
 			break;
 		case SUM:
-			CudaKernels::addTensor(
-				gpuPointer,
-				o.t1.gpuPointer,
-				o.t2.gpuPointer,
-				o.t1.size.size,
-				o.t2.size.size
-			);
+			callAddKernel(*this, o.t1, o.t2, 0);
+			break;
+		case HADAMARD:
+			callHadmaradKernel(*this, o.t1, o.t2, 0);
+			break;
+	}
+}
+
+void Tensor::operator+=(const OperationDetails<Tensor, Tensor>& o) {
+	switch (o.operation) {
+		case MUL2D:
+			callMulKernerl(*this, o.t1, o.t2, 1);
+			break;
+		case SUM:
+			callAddKernel(*this, o.t1, o.t2, 1);
+			break;
+		case HADAMARD:
+			callHadmaradKernel(*this, o.t1, o.t2, 1);
+			break;
+	}
+}
+
+void Tensor::operator-=(const OperationDetails<Tensor, Tensor>& o) {
+	switch (o.operation) {
+		case MUL2D:
+			callMulKernerl(*this, o.t1, o.t2, -1);
+			break;
+		case SUM:
+			callAddKernel(*this, o.t1, o.t2, -1);
+			break;
+		case HADAMARD:
+			callHadmaradKernel(*this, o.t1, o.t2, -1);
 			break;
 	}
 }

@@ -6,7 +6,8 @@
 
 enum Op {
 	MUL2D,
-	SUM
+	SUM,
+	HADAMARD
 };
 
 template<typename T, typename U>

@@ -14,6 +14,7 @@ CurandManager::CurandManager(size_t statePoolSize,unsigned long seed) {
 }
 
 void CurandManager::randomizeTensorUniform(Tensor_DEVICE t, size_t size, float low, float high) {
+	gpuSyncStream(&randStream);
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
@@ -28,6 +29,7 @@ void CurandManager::randomizeTensorUniform(Tensor_DEVICE t, size_t size, float l
 }
 
 void CurandManager::rndOffsetTensorUniform(Tensor_DEVICE t, size_t size, float prob, float low, float high) {
+	gpuSyncStream(&randStream);
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
