@@ -58,13 +58,14 @@ unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
 			hiddenSliced.functionPass(activationToKernelFunc(hiddenActivation));
 			break;
 		case 4:
-			hiddenSliced = hiddenSliced % weightsHiddenPresent;
+			layerSliced = hiddenSliced % weightsHiddenPresent;
 			break;
 		case 5:
-			layerSliced = hiddenSliced + biasesOutput;
+			layerSliced = layerSliced + biasesOutput;
 			break;
 		case 6:
 			layerSliced.functionPass(activationToKernelFunc(activation));
+			step = 0;
 			break;
 	}
 	return 0;

@@ -67,6 +67,53 @@ __global__ void mulTensor_kernel(Tensor_DEVICE tTarget,
 	}
 }
 
+// Do smth with this
+
+__global__ void mulTensorMapped_kernel(	 Tensor_DEVICE tTarget,
+										 Tensor_DEVICE tSource1,
+										 Tensor_DEVICE tSource2,
+										 size_t poolSize1,
+										 size_t poolSize2,
+										 size_t prodLc,
+										 size_t l,
+										 size_t cl,
+										 size_t c,
+										 bool isMappedT,
+										 bool isMapped1,
+										 bool isMapped2,
+										 size_t blockSizeT,
+										 size_t blockSize1,
+										 size_t blockSize2,
+										 int operand
+) {
+	size_t t = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t tensorStep = t % prodLc;
+	size_t poolId = t / prodLc;
+
+	if (poolId < max(poolSize1, poolSize2)) {
+
+		size_t line = tensorStep / c;
+		size_t column = tensorStep % c;
+		TENSOR_TYPE sum = 0;
+
+		size_t accesPoint1, accesPoint2;
+
+		for (size_t i = 0; i < cl; i++) {
+			accesPoint1 = (poolId % poolSize1) * prodLc + line + i * l;
+			accesPoint2 = (poolId % poolSize2) * prodLc + i + column * cl;
+
+			sum +=  
+					(((Tensor_DEVICE*)tSource1)[isMapped1 * ( - 1 - accesPoint1 / blockSize1)])[accesPoint1 % blockSize1] *
+					(((Tensor_DEVICE*)tSource2)[isMapped2 * ( - 1 - accesPoint2 / blockSize2)])[accesPoint2 % blockSize2];
+		}
+
+		size_t targetId = poolId * prodLc + line + column * l;
+		Tensor_DEVICE val = (((Tensor_DEVICE*)tTarget)[isMappedT * (-1 - targetId / blockSizeT)]);
+		val[accesPoint1 % blockSizeT] = sum + operand * val[targetId % blockSizeT];
+
+	}
+}
+
 __global__ void funcPassReLU_kernel(Tensor_DEVICE t, Func f, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
