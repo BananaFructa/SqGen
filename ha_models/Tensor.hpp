@@ -7,12 +7,16 @@
 
 #include <cstdarg>
 
-struct Tensor {
+class Tensor {
 public:
 
 	static Tensor EmptyTensor;
 
 	Size size;
+
+	size_t mapSize = 0;
+	size_t mapBlockSize = 0;
+	size_t blockAllignOffset = 0;
 
 	Tensor();
 
@@ -22,9 +26,9 @@ public:
 
 	void init(Size size);
 
-	void setValue(TENSOR_TYPE t[]);
+	void setValue(Tensor_HOST t);
 
-	void getValue(TENSOR_TYPE t[]);
+	void getValue(Tensor_HOST t);
 
 	Scalar getElementAt(size_t pos,...);
 
@@ -37,7 +41,9 @@ public:
 	*/
 	Tensor slice(size_t begin, size_t end);
 
-	Tensor_DEVICE getGpuPointer();
+	Tensor_DEVICE getGpuDataPointer();
+
+	TensorMap_DEVICE getGpuMapPointer();
 
 	void functionPass(Func f);
 
@@ -62,8 +68,11 @@ public:
 
 	void operator-=(const OperationDetails<Tensor, Tensor>& o);
 
-private:
+protected:
 
-	Tensor_DEVICE gpuPointer = NULL_TENSOR;
+	Tensor_DEVICE gpuTensorData = NULL_TENSOR;
+	TensorMap_DEVICE gpuTensorMap = NULL_TENSOR;
+
+	void setMap(TensorMap_HOST m);
 
 };

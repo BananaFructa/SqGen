@@ -22,7 +22,7 @@ int main() {
 
 	model.addLayer(new DenseLayer(1, 5, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(5, 10, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(10, 1, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(10, 1, Activation::SIGMOID));
 
 	model.randomizeUniform(curand);
 

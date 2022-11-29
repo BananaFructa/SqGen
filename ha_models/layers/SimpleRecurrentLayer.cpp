@@ -41,8 +41,8 @@ unsigned short SimpleRecurrentLayer::stepCount() {
 
 unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
 
-	Tensor layerSliced = layer.slice(0, input.size.getDimSize(input.size.dim - 1));
-	Tensor hiddenSliced = hiddenLayer.slice(0, input.size.getDimSize(input.size.dim - 1));
+	Tensor layerSliced = layer.slice(0, input.size.last());
+	Tensor hiddenSliced = hiddenLayer.slice(0, input.size.last());
 
 	switch (step++) {
 		case 0:

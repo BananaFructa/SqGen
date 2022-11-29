@@ -16,11 +16,35 @@ __global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, 
 	}
 }
 
+__global__ void addTensorMapped_kernel(TensorMap_DEVICE mapT, TensorMap_DEVICE map1, TensorMap_DEVICE map2, size_t elemSize1, size_t elemSize2, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t maxSize = max(elemSize1, elemSize2);
+	if (i < maxSize) {
+		Tensor_DEVICE target = mapT[i / blockSizeT];
+		size_t accesPoint1 = i % elemSize1 + allignOffset1;
+		size_t accesPoint2 = i % elemSize2 + allignOffset2;
+		size_t accesPointT = i + allignOffsetT;
+		target[accesPointT % blockSizeT] = map1[accesPoint1][accesPoint1 % blockSize1] + map2[accesPoint2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
+	}
+}
+
 __global__ void hadamardTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t maxSize = max(elemSize1, elemSize2);
 	if (i < maxSize) {
 		tTarget[i] = tSource1[i % elemSize1] * tSource2[i % elemSize2] + operand * tTarget[i];
+	}
+}
+
+__global__ void hadamardTensorMapped_kernel(TensorMap_DEVICE mapT, TensorMap_DEVICE map1, TensorMap_DEVICE map2, size_t elemSize1, size_t elemSize2, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t maxSize = max(elemSize1, elemSize2);
+	if (i < maxSize) {
+		Tensor_DEVICE target = mapT[i / blockSizeT];
+		size_t accesPoint1 = i % elemSize1 + allignOffset1;
+		size_t accesPoint2 = i % elemSize2 + allignOffset2;
+		size_t accesPointT = i + allignOffsetT;
+		target[accesPointT % blockSizeT] = map1[accesPoint1][accesPoint1 % blockSize1] * map2[accesPoint2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
 	}
 }
 
@@ -67,24 +91,22 @@ __global__ void mulTensor_kernel(Tensor_DEVICE tTarget,
 	}
 }
 
-// Do smth with this
-
-__global__ void mulTensorMapped_kernel(	 Tensor_DEVICE tTarget,
-										 Tensor_DEVICE tSource1,
-										 Tensor_DEVICE tSource2,
-										 size_t poolSize1,
-										 size_t poolSize2,
-										 size_t prodLc,
-										 size_t l,
-										 size_t cl,
-										 size_t c,
-										 bool isMappedT,
-										 bool isMapped1,
-										 bool isMapped2,
-										 size_t blockSizeT,
-										 size_t blockSize1,
-										 size_t blockSize2,
-										 int operand
+__global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
+									   TensorMap_DEVICE map1,
+									   TensorMap_DEVICE map2,
+									   size_t poolSize1,
+									   size_t poolSize2,
+									   size_t prodLc,
+									   size_t l,
+									   size_t cl,
+									   size_t c,
+									   size_t blockSizeT,
+									   size_t blockSize1,
+									   size_t blockSize2,
+									   size_t allignOffsetT,
+									   size_t allignOffset1,
+									   size_t allignOffset2,
+									   int operand
 ) {
 	size_t t = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = t % prodLc;
@@ -99,16 +121,15 @@ __global__ void mulTensorMapped_kernel(	 Tensor_DEVICE tTarget,
 		size_t accesPoint1, accesPoint2;
 
 		for (size_t i = 0; i < cl; i++) {
-			accesPoint1 = (poolId % poolSize1) * prodLc + line + i * l;
-			accesPoint2 = (poolId % poolSize2) * prodLc + i + column * cl;
 
-			sum +=  
-					(((Tensor_DEVICE*)tSource1)[isMapped1 * ( - 1 - accesPoint1 / blockSize1)])[accesPoint1 % blockSize1] *
-					(((Tensor_DEVICE*)tSource2)[isMapped2 * ( - 1 - accesPoint2 / blockSize2)])[accesPoint2 % blockSize2];
+			accesPoint1 = (poolId % poolSize1) * prodLc + line + i * l + allignOffset1;
+			accesPoint2 = (poolId % poolSize2) * prodLc + i + column * cl + allignOffset2;
+
+			sum += map1[accesPoint1 / blockSize1][accesPoint1 % blockSize1] * map2[accesPoint2 / blockSize2][accesPoint2 % blockSize2];
 		}
 
-		size_t targetId = poolId * prodLc + line + column * l;
-		Tensor_DEVICE val = (((Tensor_DEVICE*)tTarget)[isMappedT * (-1 - targetId / blockSizeT)]);
+		size_t targetId = poolId * prodLc + line + column * l + allignOffsetT;
+		Tensor_DEVICE val = mapT[targetId / blockSizeT];
 		val[accesPoint1 % blockSizeT] = sum + operand * val[targetId % blockSizeT];
 
 	}
@@ -184,17 +205,17 @@ __global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVIC
 	}
 }
 
-Tensor_DEVICE allocateTensor(size_t size) {
-	Tensor_DEVICE tensor;
-	cudaMalloc(&tensor, size * sizeof(TENSOR_TYPE));
-	return tensor;
+AllocRes allocateTensor(size_t size,size_t mapSize) {
+	void* tensorData;
+	cudaMalloc(&tensorData, size * sizeof(TENSOR_TYPE) + mapSize * sizeof(TENSOR_TYPE*));
+	return { (Tensor_DEVICE)tensorData + mapSize,(TensorMap_DEVICE)tensorData };
 }
 
 void bindTensor(cudaStream_t *stream) {
 	currentStream = stream;
 }
 
-void freeTensor(Tensor_DEVICE t) {
+void freeCudaMem(void* t) {
 	cudaFree(t);
 }
 
@@ -206,6 +227,10 @@ void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size) {
 	cudaMemcpy(t, tHost, size * sizeof(TENSOR_TYPE), cudaMemcpyHostToDevice);
 }
 
+void copyMapFromHost(TensorMap_DEVICE mHost, TensorMap_DEVICE m, size_t size) {
+	cudaMemcpy(m, mHost, size * sizeof(TENSOR_TYPE*), cudaMemcpyHostToDevice);
+}
+
 void CudaKernels::addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t elemSize1,size_t elemSize2,int operand) {
 
 	dim3 threadSize(256);
@@ -214,12 +239,26 @@ void CudaKernels::addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tenso
 	addTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, elemSize1, elemSize2,operand);
 }
 
+void CudaKernels::addTensorMapped(TensorMap_DEVICE mapT, TensorMap_DEVICE map1, TensorMap_DEVICE map2, size_t elemSize1, size_t elemSize2, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
+	dim3 threadSize(256);
+	dim3 blockSize((MAX(elemSize1, elemSize2) + threadSize.x - 1) / threadSize.x);
+
+	addTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (mapT,map1,map2,elemSize1,elemSize2,blockSizeT,blockSize1,blockSize2,allignOffsetT,allignOffset1,allignOffset2, operand);
+}
+
 void CudaKernels::hadamardTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
 
 	dim3 threadSize(256);
 	dim3 blockSize((MAX(elemSize1, elemSize2) + threadSize.x - 1) / threadSize.x);
 
 	hadamardTensor_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (tTarget, tSource1, tSource2, elemSize1, elemSize2,operand);
+}
+
+void CudaKernels::hadamardTensorMapped(TensorMap_DEVICE mapT, TensorMap_DEVICE map1, TensorMap_DEVICE map2, size_t elemSize1, size_t elemSize2, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
+	dim3 threadSize(256);
+	dim3 blockSize((MAX(elemSize1, elemSize2) + threadSize.x - 1) / threadSize.x);
+
+	hadamardTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (mapT, map1, map2, elemSize1, elemSize2, blockSizeT, blockSize1, blockSize2,allignOffsetT,allignOffset1,allignOffset2, operand);
 }
 
 void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
@@ -265,6 +304,15 @@ void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tens
 	dim3 blockSize((processCountPerTensor * MAX(poolSize1,poolSize2) + threadSize.x - 1) / threadSize.x);
 	
 	mulTensor_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize1,poolSize2,processCountPerTensor, l, cl, c,operand);
+}
+
+void CudaKernels::mulTensorMapped2D(TensorMap_DEVICE tTarget, TensorMap_DEVICE tSource1, TensorMap_DEVICE tSource2, size_t poolSize1, size_t poolSize2, size_t l, size_t cl, size_t c, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
+	size_t processCountPerTensor = l * c;
+
+	dim3 threadSize(256);
+	dim3 blockSize((processCountPerTensor * MAX(poolSize1, poolSize2) + threadSize.x - 1) / threadSize.x);
+
+	mulTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> >  (tTarget, tSource1, tSource2, poolSize1, poolSize2, processCountPerTensor, l, cl, c, blockSizeT, blockSize1, blockSize2,allignOffsetT,allignOffset1,allignOffset2, operand);
 }
 
 void CudaKernels::curandStateAlloc(curandState_t* state, size_t size, unsigned long seed) {

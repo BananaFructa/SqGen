@@ -44,11 +44,11 @@ void CurandManager::rndOffsetTensorUniform(Tensor_DEVICE t, size_t size, float p
 }
 
 void CurandManager::randomizeTensorUniform(Tensor& t, float low, float high) {
-	randomizeTensorUniform(t.getGpuPointer(), t.size.size, low, high);
+	randomizeTensorUniform(t.getGpuDataPointer(), t.size.size, low, high);
 }
 
 void CurandManager::rndOffsetTensorUniform(Tensor& t, float prob, float low, float high) {
-	rndOffsetTensorUniform(t.getGpuPointer(), t.size.size, prob, low, high);
+	rndOffsetTensorUniform(t.getGpuDataPointer(), t.size.size, prob, low, high);
 }
 
 CurandManager::~CurandManager() {

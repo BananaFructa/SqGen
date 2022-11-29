@@ -63,6 +63,10 @@ public:
 		return sizes.get()[d];
 	}
 
+	size_t last() {
+		return getDimSize(dim - 1);
+	}
+
 private:
 
 	void calConstants() {
