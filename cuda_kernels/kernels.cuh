@@ -48,10 +48,14 @@ namespace CudaKernels {
 
 	// Tensor manipulation
 	void normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
+	void normalizeTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset);
+
 	void funcPass(Tensor_DEVICE t, Func f, size_t size);
+	void funcPassMapped(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size, Func f);
 
 	void sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
-	
+	void sumTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset);
+
 	void addTensor(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand);
 	void addTensorMapped(TensorMap_DEVICE mapT, TensorMap_DEVICE map1, TensorMap_DEVICE map2, size_t elemSize1, size_t elemSize2, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand);
 	

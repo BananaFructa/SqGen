@@ -149,7 +149,7 @@ Scalar Tensor::getElementAt(size_t pos,...) {
 
 	va_end(argList);
 
-	return gpuTensorData + linearPos;
+	return gpuTensorMap[linearPos / mapBlockSize] + linearPos % mapBlockSize;
 }
 
 Tensor Tensor::slice(size_t begin, size_t end) {
@@ -176,25 +176,30 @@ TensorMap_DEVICE Tensor::getGpuMapPointer() {
 }
 
 void Tensor::functionPass(Func f) {
-	CudaKernels::funcPass(gpuTensorData, f, size.size);
+	if (mapSize == 1) CudaKernels::funcPass(gpuTensorData, f, size.size);
+	else CudaKernels::funcPassMapped(gpuTensorMap, mapBlockSize, blockAllignOffset, size.size, f);
 }
 
 void Tensor::sumAllElements(Scalar sum) {
-	CudaKernels::sumTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	if (mapSize == 1) CudaKernels::sumTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	else CudaKernels::sumTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
 }
 
 void Tensor::normalize(Scalar sum) {
-	CudaKernels::normalizeTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	if (mapSize == 1) CudaKernels::normalizeTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	else CudaKernels::normalizeTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
 }
 
 void Tensor::sumAllElementsAcrossDim(Tensor& sums) {
-	size_t last = size.getDimSize(size.dim - 1);
-	CudaKernels::sumTensor(gpuTensorData, sums.getGpuDataPointer(), last, size.size / last);
+	size_t last = size.last();
+	if (mapSize == 1) CudaKernels::sumTensor(gpuTensorData, sums.getGpuDataPointer(), last, size.size / last);
+	else CudaKernels::sumTensorMapped(gpuTensorMap, sums.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 
 void Tensor::normalizeAcrossDim(Tensor& sum) {
-	size_t last = size.getDimSize(size.dim - 1);
-	CudaKernels::normalizeTensor(gpuTensorData, sum.getGpuDataPointer(), last, size.size / last);
+	size_t last = size.last();
+	if (mapSize == 1) CudaKernels::normalizeTensor(gpuTensorData, sum.getGpuDataPointer(), last, size.size / last);
+	else CudaKernels::normalizeTensorMapped(gpuTensorMap, sum.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 
 const OperationDetails<Tensor,Tensor> Tensor::operator*(Tensor& t) {
@@ -205,8 +210,7 @@ const OperationDetails<Tensor, Tensor> Tensor::operator+(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::SUM);
 }
 
-const OperationDetails<Tensor, Tensor> Tensor::operator%(Tensor& t)
-{
+const OperationDetails<Tensor, Tensor> Tensor::operator%(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::HADAMARD);
 }
 

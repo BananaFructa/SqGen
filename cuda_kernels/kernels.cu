@@ -135,7 +135,7 @@ __global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
 	}
 }
 
-__global__ void funcPassReLU_kernel(Tensor_DEVICE t, Func f, size_t size) {
+__global__ void funcPassReLU_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
 		bool p = t[i] > 0;
@@ -143,24 +143,65 @@ __global__ void funcPassReLU_kernel(Tensor_DEVICE t, Func f, size_t size) {
 	}
 }
 
-__global__ void funcPassSigmoid_kernel(Tensor_DEVICE t, Func f, size_t size) {
+__global__ void funcPassMappedReLU_kernel(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		size_t accesPoint = i + allignOffset;
+		size_t blockId = accesPoint / blockSize;
+		size_t blockIndex = accesPoint % blockSize;
+		bool p = m[blockId][blockIndex] > 0;
+		m[blockId][blockIndex] = m[blockId][blockIndex] * p + m[blockId][blockIndex] * 0.1f * !p;
+	}
+}
+
+__global__ void funcPassSigmoid_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
 		t[i] = 1.0f / (1.0f + expf(-(float)t[i]));
 	}
 }
 
-__global__ void funcPassTanh_kernel(Tensor_DEVICE t, Func f, size_t size) {
+__global__ void funcPassMappedSigmoid_kernel(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		size_t accesPoint = i + allignOffset;
+		size_t blockId = accesPoint / blockSize;
+		size_t blockIndex = accesPoint % blockSize;
+		m[blockId][blockIndex] = 1.0f / (1.0f + expf(-(float)m[blockId][blockIndex]));
+	}
+}
+
+__global__ void funcPassTanh_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
 		t[i] = tanhf((float)t[i]);
 	}
 }
 
-__global__ void funcPassExp_kernel(Tensor_DEVICE t, Func f, size_t size) {
+__global__ void funcPassMappedTanh_kernel(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		size_t accesPoint = i + allignOffset;
+		size_t blockId = accesPoint / blockSize;
+		size_t blockIndex = accesPoint % blockSize;
+		m[blockId][blockIndex] = tanhf((float)m[blockId][blockIndex]);
+	}
+}
+
+__global__ void funcPassExp_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
 		t[i] = expf((float)t[i]);
+	}
+}
+
+__global__ void funcPassMappedExp_kernel(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		size_t accesPoint = i + allignOffset;
+		size_t blockId = accesPoint / blockSize;
+		size_t blockIndex = accesPoint % blockSize;
+		m[blockId][blockIndex] = expf((float)m[blockId][blockIndex]);
 	}
 }
 
@@ -174,6 +215,17 @@ __global__ void normalizeTensor_kernel(Tensor_DEVICE t, Tensor_DEVICE sum, size_
 	}
 }
 
+__global__ void normalizeTensorMapped_kernel(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t tensorStep = i % elemSize;
+	size_t poolId = i / elemSize;
+	size_t tensorNumber = poolId * elemSize;
+	if (poolId < poolSize) {
+		size_t accesPoint = tensorNumber + tensorStep + allignOffset;
+		m[accesPoint / blockSize][accesPoint % blockSize] /= sum[tensorNumber];
+	}
+}
+
 __global__ void sumTensor_kernel(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t tensorStep = i % elemSize;
@@ -181,6 +233,17 @@ __global__ void sumTensor_kernel(Tensor_DEVICE t, Tensor_DEVICE sum, size_t pool
 	size_t tensorNumber = (i / elemSize) * elemSize;
 	if (poolId < poolSize) {
 		atomicAdd(&sum[tensorNumber], t[tensorNumber + tensorStep]);
+	}
+}
+
+__global__ void sumTensorMapped_kernel(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t tensorStep = i % elemSize;
+	size_t poolId = i / elemSize;
+	size_t tensorNumber = (i / elemSize) * elemSize;
+	if (poolId < poolSize) {
+		size_t accesPoint = tensorNumber + tensorStep + allignOffset;
+		atomicAdd(&sum[tensorNumber], m[accesPoint / blockSize][accesPoint % blockSize]);
 	}
 }
 
@@ -268,16 +331,36 @@ void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
 
 	switch (f) {
 		case KERNEL_ReLU:
-			funcPassReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			funcPassReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
 			break;
 		case KERNEL_SIGMOID:
-			funcPassSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			funcPassSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
 			break;
 		case KERNEL_TANH:
-			funcPassTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			funcPassTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
 			break;
 		case KERNEL_EXP:
-			funcPassExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, f, size);
+			funcPassExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
+			break;
+	}
+}
+
+void CudaKernels::funcPassMapped(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size, Func f) {
+	dim3 threadSize(256);
+	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
+
+	switch (f) {
+		case KERNEL_ReLU:
+			funcPassMappedReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m,blockSize,allignOffset,size);
+			break;
+		case KERNEL_SIGMOID:
+			funcPassMappedSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
+			break;
+		case KERNEL_TANH:
+			funcPassMappedTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
+			break;
+		case KERNEL_EXP:
+			funcPassMappedExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
 			break;
 	}
 }
@@ -290,11 +373,25 @@ void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poo
 	normalizeTensor_kernel <<< blockSize,threadSize, 0, (currentStream ? *currentStream : 0) >>> (t,sum,poolSize,elemSize);
 }
 
+void CudaKernels::normalizeTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+	dim3 threadSize(256);
+	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
+
+	normalizeTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> >  (m, sum, poolSize, elemSize, blockSize, allignOffset);
+}
+
 void CudaKernels::sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
 	dim3 threadSize(256);
 	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
 
 	sumTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, sum, poolSize, elemSize);
+}
+
+void CudaKernels::sumTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+	dim3 threadSize(256);
+	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
+
+	sumTensorMapped_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (m, sum, poolSize, elemSize, blockSize, allignOffset);
 }
 
 void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t poolSize1,size_t poolSize2, size_t l, size_t cl , size_t c,int operand) {

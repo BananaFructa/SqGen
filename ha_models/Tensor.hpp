@@ -24,11 +24,15 @@ public:
 
 	void free();
 
-	void init(Size size);
+	virtual void init(Size size);
 
-	void setValue(Tensor_HOST t);
+	// =============================================== 
 
-	void getValue(Tensor_HOST t);
+	void setValue(Tensor_HOST t); // <------+
+								  //		|--------- Dont support mapped tensors, change to kernel copy
+	void getValue(Tensor_HOST t); // <------+
+
+	// =============================================== 
 
 	Scalar getElementAt(size_t pos,...);
 
