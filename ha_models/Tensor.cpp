@@ -2,7 +2,7 @@
 
 // Too many paramters so these are some functions to wrap everything up
 void callMulKernerl(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
-	if (tt.mapSize == 1 && t1.mapSize == 1 && t2.mapSize == 1) {
+	if (!tt.mapped && !t1.mapped == 1 && !t2.mapped) {
 		CudaKernels::mulTensor2D(
 			tt.getGpuDataPointer(),
 			t1.getGpuDataPointer(),
@@ -37,7 +37,7 @@ void callMulKernerl(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 }
 
 void callAddKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
-	if (tt.mapSize == 1 && t1.mapSize == 1 && t2.mapSize == 1) {
+	if (!tt.mapped && !t1.mapped && !t2.mapped) {
 		CudaKernels::addTensor(
 			tt.getGpuDataPointer(),
 			t1.getGpuDataPointer(),
@@ -66,7 +66,7 @@ void callAddKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 }
 
 void callHadmaradKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
-	if (tt.mapSize == 1 && t1.mapSize == 1 && t2.mapSize == 1) {
+	if (!tt.mapped && !t1.mapped && !t2.mapped) {
 		CudaKernels::hadamardTensor(
 			tt.getGpuDataPointer(),
 			t1.getGpuDataPointer(),
@@ -107,6 +107,7 @@ Tensor::Tensor(Size size) {
 void Tensor::free() {
 	if (gpuTensorMap) freeCudaMem(gpuTensorMap);
 	else if (gpuTensorData) freeCudaMem(gpuTensorData);
+	if (hostMap) delete[] hostMap;
 }
 
 void Tensor::init(Size size) {
@@ -118,17 +119,22 @@ void Tensor::init(Size size) {
 		gpuTensorData = res.data;
 		gpuTensorMap = res.map;
 
-		TENSOR_TYPE* map[] = { gpuTensorData };
-		setMap((TensorMap_HOST)map);
+		hostMap = new Tensor_DEVICE[mapSize];
+		hostMap[0] = gpuTensorData;
+		syncMap();
 	}
 }
 
 void Tensor::setValue(Tensor_HOST t) {
-	copyTensorFromHost(t, gpuTensorData, size.size);
+	for (int i = 0; i < mapSize; i++) {
+		copyTensorFromHost(t + i * mapBlockSize, hostMap[i], mapBlockSize);
+	}
 }
 
 void Tensor::getValue(Tensor_HOST t) {
-	copyTensorFromDevice(t, gpuTensorData, size.size);
+	for (int i = 0; i < mapSize; i++) {
+		copyTensorFromDevice(t + i * mapBlockSize, hostMap[i], mapBlockSize);
+	}
 }
 
 Scalar Tensor::getElementAt(size_t pos,...) {
@@ -153,17 +159,35 @@ Scalar Tensor::getElementAt(size_t pos,...) {
 }
 
 Tensor Tensor::slice(size_t begin, size_t end) {
-	size_t subSize = size.size / size.getDimSize(size.dim - 1);
+
+	// TAKE BLOCK OFFSET INTO ACCOUNT AAAAAAAAAAAAAAAAAAAA
+
+	size_t subSize = size.size / size.last();
 	size_t* sizes = new size_t[size.dim];
 	for (int i = 0; i < size.dim - 1; i++) sizes[i] = size.getDimSize(i);
 	sizes[size.dim - 1] = end - begin;
+
 	Tensor sliced;
-	sliced.gpuTensorData = gpuTensorData + subSize * begin;
-	sliced.gpuTensorMap = gpuTensorMap + begin / mapBlockSize;
+
 	sliced.size = Size(size.dim, sizes);
-	sliced.mapSize = 1 + (end - 1) / mapBlockSize - begin / mapBlockSize;
+
+	sliced.mapSize = 1 + (end - 1) * subSize / mapBlockSize - begin * subSize / mapBlockSize;
 	sliced.mapBlockSize = mapBlockSize;
-	sliced.blockAllignOffset = begin % mapBlockSize;
+	sliced.blockAllignOffset = begin * subSize % mapBlockSize;
+
+	sliced.gpuTensorMap = gpuTensorMap + begin * subSize / mapBlockSize;
+	sliced.hostMap = hostMap + begin * subSize / mapBlockSize;
+
+	if (!referenceOnly && mapSize == 1) {
+		sliced.gpuTensorData = gpuTensorData + subSize * begin;
+		sliced.referenceOnly = false;
+		sliced.mapped = false;
+	}
+	else {
+		sliced.referenceOnly = true;
+		sliced.mapped = true;
+	}
+
 	return sliced;
 }
 
@@ -176,29 +200,33 @@ TensorMap_DEVICE Tensor::getGpuMapPointer() {
 }
 
 void Tensor::functionPass(Func f) {
-	if (mapSize == 1) CudaKernels::funcPass(gpuTensorData, f, size.size);
+	if (!mapped) CudaKernels::funcPass(gpuTensorData, f, size.size);
 	else CudaKernels::funcPassMapped(gpuTensorMap, mapBlockSize, blockAllignOffset, size.size, f);
 }
 
 void Tensor::sumAllElements(Scalar sum) {
-	if (mapSize == 1) CudaKernels::sumTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	if (!mapped) CudaKernels::sumTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
 	else CudaKernels::sumTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
 }
 
 void Tensor::normalize(Scalar sum) {
-	if (mapSize == 1) CudaKernels::normalizeTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
+	if (!mapped) CudaKernels::normalizeTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
 	else CudaKernels::normalizeTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
+}
+
+void Tensor::syncMap() {
+	setMap(hostMap);
 }
 
 void Tensor::sumAllElementsAcrossDim(Tensor& sums) {
 	size_t last = size.last();
-	if (mapSize == 1) CudaKernels::sumTensor(gpuTensorData, sums.getGpuDataPointer(), last, size.size / last);
+	if (!mapped) CudaKernels::sumTensor(gpuTensorData, sums.getGpuDataPointer(), last, size.size / last);
 	else CudaKernels::sumTensorMapped(gpuTensorMap, sums.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 
 void Tensor::normalizeAcrossDim(Tensor& sum) {
 	size_t last = size.last();
-	if (mapSize == 1) CudaKernels::normalizeTensor(gpuTensorData, sum.getGpuDataPointer(), last, size.size / last);
+	if (!mapped) CudaKernels::normalizeTensor(gpuTensorData, sum.getGpuDataPointer(), last, size.size / last);
 	else CudaKernels::normalizeTensorMapped(gpuTensorMap, sum.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 

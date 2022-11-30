@@ -8,8 +8,12 @@
 #include "device_functions.h"
 #include "cuda.h"
 
+#ifndef TENSOR_TYPE
 #define TENSOR_TYPE float
+#endif
+
 #define NULL_TENSOR 0
+#define NULL_TENSOR_MAP 0
 #define DEFAULT_STREAM 0
 
 typedef TENSOR_TYPE* Tensor_DEVICE;

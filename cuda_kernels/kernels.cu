@@ -271,7 +271,7 @@ __global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVIC
 AllocRes allocateTensor(size_t size,size_t mapSize) {
 	void* tensorData;
 	cudaMalloc(&tensorData, size * sizeof(TENSOR_TYPE) + mapSize * sizeof(TENSOR_TYPE*));
-	return { (Tensor_DEVICE)tensorData + mapSize,(TensorMap_DEVICE)tensorData };
+	return { (Tensor_DEVICE)((TensorMap_DEVICE)tensorData + mapSize),(TensorMap_DEVICE)tensorData };
 }
 
 void bindTensor(cudaStream_t *stream) {
@@ -345,22 +345,22 @@ void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
 	}
 }
 
-void CudaKernels::funcPassMapped(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size, Func f) {
+void CudaKernels::funcPassMapped(TensorMap_DEVICE m, size_t blockSize_, size_t allignOffset, size_t size, Func f) {
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 
 	switch (f) {
 		case KERNEL_ReLU:
-			funcPassMappedReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m,blockSize,allignOffset,size);
+			funcPassMappedReLU_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m,blockSize_,allignOffset,size);
 			break;
 		case KERNEL_SIGMOID:
-			funcPassMappedSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
+			funcPassMappedSigmoid_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
 			break;
 		case KERNEL_TANH:
-			funcPassMappedTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
+			funcPassMappedTanh_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
 			break;
 		case KERNEL_EXP:
-			funcPassMappedExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize, allignOffset, size);
+			funcPassMappedExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
 			break;
 	}
 }
@@ -373,11 +373,11 @@ void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poo
 	normalizeTensor_kernel <<< blockSize,threadSize, 0, (currentStream ? *currentStream : 0) >>> (t,sum,poolSize,elemSize);
 }
 
-void CudaKernels::normalizeTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+void CudaKernels::normalizeTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize_, size_t allignOffset) {
 	dim3 threadSize(256);
 	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
 
-	normalizeTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> >  (m, sum, poolSize, elemSize, blockSize, allignOffset);
+	normalizeTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> >  (m, sum, poolSize, elemSize, blockSize_, allignOffset);
 }
 
 void CudaKernels::sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {
@@ -387,11 +387,11 @@ void CudaKernels::sumTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize,
 	sumTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, sum, poolSize, elemSize);
 }
 
-void CudaKernels::sumTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset) {
+void CudaKernels::sumTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize_, size_t allignOffset) {
 	dim3 threadSize(256);
 	dim3 blockSize((poolSize * elemSize + threadSize.x - 1) / threadSize.x);
 
-	sumTensorMapped_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (m, sum, poolSize, elemSize, blockSize, allignOffset);
+	sumTensorMapped_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (m, sum, poolSize, elemSize, blockSize_, allignOffset);
 }
 
 void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tensor_DEVICE tSource2,size_t poolSize1,size_t poolSize2, size_t l, size_t cl , size_t c,int operand) {

@@ -14,6 +14,7 @@ public:
 
 	Size size;
 
+	bool mapped = false;
 	size_t mapSize = 0;
 	size_t mapBlockSize = 0;
 	size_t blockAllignOffset = 0;
@@ -22,7 +23,7 @@ public:
 
 	Tensor(Size size);
 
-	void free();
+	virtual void free();
 
 	virtual void init(Size size);
 
@@ -59,6 +60,7 @@ public:
 
 	void normalize(Scalar sum);
 
+	void syncMap();
 
 	const OperationDetails<Tensor, Tensor> operator*(Tensor& t);
 
@@ -74,8 +76,11 @@ public:
 
 protected:
 
+	bool referenceOnly = false;
+
 	Tensor_DEVICE gpuTensorData = NULL_TENSOR;
-	TensorMap_DEVICE gpuTensorMap = NULL_TENSOR;
+	TensorMap_DEVICE gpuTensorMap = NULL_TENSOR_MAP;
+	TensorMap_HOST hostMap = NULL_TENSOR_MAP;
 
 	void setMap(TensorMap_HOST m);
 

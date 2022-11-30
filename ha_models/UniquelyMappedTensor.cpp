@@ -3,7 +3,13 @@
 UniquelyMappedTensor::UniquelyMappedTensor() : Tensor() {
 }
 
-UniquelyMappedTensor::UniquelyMappedTensor(Size size) : Tensor(size) {
+UniquelyMappedTensor::UniquelyMappedTensor(Size size) {
+	init(size);
+}
+
+void UniquelyMappedTensor::free() {
+	Tensor::free();
+	delete[] hostMap;
 }
 
 void UniquelyMappedTensor::init(Size size) {
@@ -15,14 +21,16 @@ void UniquelyMappedTensor::init(Size size) {
 		gpuTensorData = res.data;
 		gpuTensorMap = res.map;
 
-		TENSOR_TYPE** map = new TENSOR_TYPE * [mapSize];
+		hostMap = new TENSOR_TYPE * [mapSize];
 		for (int i = 0; i < mapSize; i++) {
-			map[i] = gpuTensorData + i * mapBlockSize;
+			hostMap[i] = gpuTensorData + i * mapBlockSize;
 		}
-
-		setMap((TensorMap_HOST)map);
-
-		delete[] map;
-
+		syncMap();
 	}
+}
+
+void UniquelyMappedTensor::swap(size_t a, size_t b) {
+	Tensor_DEVICE temp = hostMap[a];
+	hostMap[a] = hostMap[b];
+	hostMap[b] = temp;
 }
