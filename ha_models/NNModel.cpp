@@ -51,3 +51,7 @@ void NNModel::loadModel(Tensor variables[]) {
 		current += layers[i]->loadParams(&variables[current]);
 	}
 }
+
+void NNModel::disableDefInternalAlloc() {
+	for (int i = 0; i < layerCount(); i++) layers[i]->disableDefInternalAlloc();
+}

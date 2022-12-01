@@ -11,9 +11,17 @@ enum Activation {
 };
 
 class Layer {
+protected:
+
+	bool allocInternal = true;
+
 public:
 
 	virtual void free() {};
+
+	void disableDefInternalAlloc() {
+		allocInternal = false;
+	}
 
 	virtual void setPool(size_t newSize) {};
 
@@ -22,6 +30,7 @@ public:
 
 	virtual void rndParams(CurandManager& curandManager) {};
 	virtual size_t loadParams(Tensor params[]) { return 0; };
+	virtual size_t loadState(Tensor states[]) { return 0; };
 
 	virtual unsigned short stepCount() { return 0; };
 	virtual unsigned short stepAsync(Tensor& input) { return 0; };

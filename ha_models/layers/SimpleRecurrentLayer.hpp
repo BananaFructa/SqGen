@@ -39,6 +39,7 @@ public:
 
 	void rndParams(CurandManager& curandManager);
 	size_t loadParams(Tensor params[]);
+	size_t loadState(Tensor state[]);
 
 	Tensor& getValue();
 

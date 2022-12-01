@@ -25,5 +25,7 @@ public:
 	void randomizeUniform(CurandManager& curandManager);
 	void loadModel(Tensor variables[]);
 
+	void disableDefInternalAlloc();
+
 
 };

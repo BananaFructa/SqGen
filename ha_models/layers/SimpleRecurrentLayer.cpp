@@ -23,7 +23,7 @@ void SimpleRecurrentLayer::free() {
 
 void SimpleRecurrentLayer::setPool(size_t newSize) {
 	Size outSize = Size((size_t)3, (size_t)1, size, newSize);
-	hiddenLayer.init(outSize);
+	if (allocInternal) hiddenLayer.init(outSize);
 	layer.init(outSize);
 }
 
@@ -93,6 +93,11 @@ size_t SimpleRecurrentLayer::loadParams(Tensor params[]) {
 	biasesHidden = params[3];
 	biasesOutput = params[4];
 	return 5;
+}
+
+size_t SimpleRecurrentLayer::loadState(Tensor state[]) {
+	hiddenLayer = state[0];
+	return 1;
 }
 
 Tensor& SimpleRecurrentLayer::getValue() {
