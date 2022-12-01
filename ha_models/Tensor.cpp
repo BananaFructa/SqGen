@@ -160,8 +160,6 @@ Scalar Tensor::getElementAt(size_t pos,...) {
 
 Tensor Tensor::slice(size_t begin, size_t end) {
 
-	// TAKE BLOCK OFFSET INTO ACCOUNT AAAAAAAAAAAAAAAAAAAA
-
 	size_t subSize = size.size / size.last();
 	size_t* sizes = new size_t[size.dim];
 	for (int i = 0; i < size.dim - 1; i++) sizes[i] = size.getDimSize(i);
@@ -171,12 +169,18 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 
 	sliced.size = Size(size.dim, sizes);
 
-	sliced.mapSize = 1 + (end - 1) * subSize / mapBlockSize - begin * subSize / mapBlockSize;
-	sliced.mapBlockSize = mapBlockSize;
-	sliced.blockAllignOffset = begin * subSize % mapBlockSize;
+	size_t endBlockId = ((end - 1) * subSize + blockAllignOffset) / mapBlockSize;
+	size_t beginBlockId = (begin * subSize + blockAllignOffset) / mapBlockSize;
+	size_t beginBlockIndex = (begin * subSize + blockAllignOffset) % mapBlockSize;
 
-	sliced.gpuTensorMap = gpuTensorMap + begin * subSize / mapBlockSize;
-	sliced.hostMap = hostMap + begin * subSize / mapBlockSize;
+	sliced.mapSize = 1 + endBlockId - beginBlockId;
+
+	sliced.mapBlockSize = mapBlockSize;
+
+	sliced.blockAllignOffset = beginBlockIndex;
+
+	sliced.gpuTensorMap = gpuTensorMap + beginBlockId;
+	sliced.hostMap = hostMap + beginBlockId;
 
 	if (!referenceOnly && mapSize == 1) {
 		sliced.gpuTensorData = gpuTensorData + subSize * begin;

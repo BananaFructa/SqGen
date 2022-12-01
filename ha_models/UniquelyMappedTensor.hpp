@@ -8,7 +8,6 @@ public:
 	UniquelyMappedTensor();
 	UniquelyMappedTensor(Size size);
 
-	void free();
 	void init(Size size);
 	void swap(size_t a, size_t b);
 

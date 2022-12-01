@@ -21,20 +21,39 @@ public:
 
 	Tensor();
 
+	/*
+	* @brief Constructor which calls the Tensor::init() method with size as a parameter
+	* @param size = The wanted size of the tensor
+	*/
 	Tensor(Size size);
 
-	virtual void free();
+	/*
+	* @brief Frees all the GPU/CPU side memory associated with the tensor object.
+	*/
+	void free();
 
+	/*
+	* @brief Allocated the required GPU/CPU side memory and values
+	* @param size = The wanted size of the tensor
+	*/
 	virtual void init(Size size);
 
-	// =============================================== 
+	/*
+	* @brief Sets the value of of the tensor to be equal to the input CPU side array
+	* @param t = Input CPU side array
+	*/
+	void setValue(Tensor_HOST t);
 
-	void setValue(Tensor_HOST t); // <------+
-								  //		|--------- Dont support mapped tensors, change to kernel copy
-	void getValue(Tensor_HOST t); // <------+
+	/*
+	* @brief Gets the value of the tensor and copies it to a CPU side array
+	* @param t = Input CPU side array
+	*/
+	void getValue(Tensor_HOST t); 
 
-	// =============================================== 
-
+	/*
+	* @param pos = The position of the scalar
+	* @return The GPU pointer of the scalar
+	*/
 	Scalar getElementAt(size_t pos,...);
 
 	/*
@@ -46,8 +65,14 @@ public:
 	*/
 	Tensor slice(size_t begin, size_t end);
 
+	/*
+	* @return The GPU tensor data pointer
+	*/
 	Tensor_DEVICE getGpuDataPointer();
 
+	/*
+	* @return The GPU tensor map pointer
+	*/
 	TensorMap_DEVICE getGpuMapPointer();
 
 	void functionPass(Func f);

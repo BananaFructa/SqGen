@@ -7,16 +7,12 @@ UniquelyMappedTensor::UniquelyMappedTensor(Size size) {
 	init(size);
 }
 
-void UniquelyMappedTensor::free() {
-	Tensor::free();
-	delete[] hostMap;
-}
-
 void UniquelyMappedTensor::init(Size size) {
 	if (!gpuTensorData) {
 		this->size = size;
 		this->mapSize = size.last();
 		this->mapBlockSize = size.size / mapSize;
+		this->mapped = true;
 		AllocRes res = allocateTensor(size.size, mapSize);
 		gpuTensorData = res.data;
 		gpuTensorMap = res.map;

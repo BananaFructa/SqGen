@@ -24,7 +24,7 @@ __global__ void addTensorMapped_kernel(TensorMap_DEVICE mapT, TensorMap_DEVICE m
 		size_t accesPoint1 = i % elemSize1 + allignOffset1;
 		size_t accesPoint2 = i % elemSize2 + allignOffset2;
 		size_t accesPointT = i + allignOffsetT;
-		target[accesPointT % blockSizeT] = map1[accesPoint1][accesPoint1 % blockSize1] + map2[accesPoint2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
+		target[accesPointT % blockSizeT] = map1[accesPoint1 / blockSize1][accesPoint1 % blockSize1] + map2[accesPoint2 / blockSize2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
 	}
 }
 
@@ -44,7 +44,7 @@ __global__ void hadamardTensorMapped_kernel(TensorMap_DEVICE mapT, TensorMap_DEV
 		size_t accesPoint1 = i % elemSize1 + allignOffset1;
 		size_t accesPoint2 = i % elemSize2 + allignOffset2;
 		size_t accesPointT = i + allignOffsetT;
-		target[accesPointT % blockSizeT] = map1[accesPoint1][accesPoint1 % blockSize1] * map2[accesPoint2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
+		target[accesPointT % blockSizeT] = map1[accesPoint1 / blockSize1][accesPoint1 % blockSize1] * map2[accesPoint2 / blockSize2][accesPoint2 % blockSize2] + operand * target[accesPointT % blockSizeT];
 	}
 }
 
@@ -130,7 +130,7 @@ __global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
 
 		size_t targetId = poolId * prodLc + line + column * l + allignOffsetT;
 		Tensor_DEVICE val = mapT[targetId / blockSizeT];
-		val[accesPoint1 % blockSizeT] = sum + operand * val[targetId % blockSizeT];
+		val[targetId % blockSizeT] = sum + operand * val[targetId % blockSizeT];
 
 	}
 }
