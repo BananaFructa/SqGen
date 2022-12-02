@@ -75,6 +75,8 @@ public:
 	*/
 	TensorMap_DEVICE getGpuMapPointer();
 
+	void initZero();
+
 	void functionPass(Func f);
 
 	void sumAllElements(Scalar sum);

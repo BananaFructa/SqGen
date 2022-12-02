@@ -203,6 +203,11 @@ TensorMap_DEVICE Tensor::getGpuMapPointer() {
 	return gpuTensorMap;
 }
 
+void Tensor::initZero() {
+	if (!referenceOnly) CudaKernels::initZeroTensor(gpuTensorData, size.size);
+	else CudaKernels::initZeroTensorMapped(gpuTensorMap, size.size, mapBlockSize, blockAllignOffset);
+}
+
 void Tensor::functionPass(Func f) {
 	if (!mapped) CudaKernels::funcPass(gpuTensorData, f, size.size);
 	else CudaKernels::funcPassMapped(gpuTensorMap, mapBlockSize, blockAllignOffset, size.size, f);

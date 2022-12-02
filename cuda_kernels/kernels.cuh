@@ -50,6 +50,9 @@ void gpuSyncStream(cudaStream_t* stream);
 
 namespace CudaKernels {
 
+	void initZeroTensor(Tensor_DEVICE t, size_t size);
+	void initZeroTensorMapped(TensorMap_DEVICE m, size_t size, size_t blockSize, size_t allignOffset);
+
 	// Tensor manipulation
 	void normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize);
 	void normalizeTensorMapped(TensorMap_DEVICE m, Tensor_DEVICE sum, size_t poolSize, size_t elemSize, size_t blockSize, size_t allignOffset);

@@ -8,6 +8,21 @@
 
 cudaStream_t *currentStream = NULL;
 
+__global__ void initZeroTensor_kernel(Tensor_DEVICE t, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = 0;
+	}
+}
+
+__global__ void initZeroTensorMapped_kernel(TensorMap_DEVICE m, size_t size, size_t blockSize, size_t allignOffset) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		m[(i + allignOffset) / blockSize][(i + allignOffset) % blockSize] = 0;
+	}
+}
+
+
 __global__ void addTensor_kernel(Tensor_DEVICE tTarget, Tensor_DEVICE tSource1, Tensor_DEVICE tSource2, size_t elemSize1, size_t elemSize2, int operand) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t maxSize = max(elemSize1, elemSize2);
@@ -363,6 +378,20 @@ void CudaKernels::funcPassMapped(TensorMap_DEVICE m, size_t blockSize_, size_t a
 			funcPassMappedExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
 			break;
 	}
+}
+
+void CudaKernels::initZeroTensor(Tensor_DEVICE t, size_t size) {
+	dim3 threadSize(256);
+	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
+
+	initZeroTensor_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
+}
+
+void CudaKernels::initZeroTensorMapped(TensorMap_DEVICE m, size_t size, size_t blockSize_, size_t allignOffset) {
+	dim3 threadSize(256);
+	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
+
+	initZeroTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m,size,blockSize_,allignOffset);
 }
 
 void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {

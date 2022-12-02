@@ -23,7 +23,11 @@ void SimpleRecurrentLayer::free() {
 
 void SimpleRecurrentLayer::setPool(size_t newSize) {
 	Size outSize = Size((size_t)3, (size_t)1, size, newSize);
-	if (allocInternal) hiddenLayer.init(outSize);
+	if (allocInternal) {
+		hiddenLayer.init(outSize);
+		hiddenLayer.initZero();
+		gpuSync();
+	}
 	layer.init(outSize);
 }
 
@@ -52,7 +56,7 @@ unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
 			hiddenSliced += input * weightsInput;
 			break;
 		case 2:
-			hiddenSliced = hiddenSliced + biasesHidden;
+			hiddenSliced = hiddenSliced + biasesHidden; // 1
 			break;
 		case 3:
 			hiddenSliced.functionPass(activationToKernelFunc(hiddenActivation));
@@ -61,14 +65,14 @@ unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
 			layerSliced = hiddenSliced % weightsHiddenPresent;
 			break;
 		case 5:
-			layerSliced = layerSliced + biasesOutput;
+			layerSliced = layerSliced + biasesOutput; // 1
 			break;
 		case 6:
 			layerSliced.functionPass(activationToKernelFunc(activation));
 			step = 0;
 			break;
 	}
-	return 0;
+	return step;
 }
 
 void SimpleRecurrentLayer::rndParams(CurandManager& curandManager) {
