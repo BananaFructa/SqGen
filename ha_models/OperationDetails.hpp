@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../cuda_kernels/kernels.cuh"
-
 #include <iostream>
 
 enum Op {

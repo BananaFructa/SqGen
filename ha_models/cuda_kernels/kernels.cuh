@@ -40,6 +40,7 @@ void destroyStream(cudaStream_t* stream);
 
 // Memory managment
 AllocRes allocateTensor(size_t size, size_t mapSize);
+void copyTensorD2D(TensorMap_DEVICE target, TensorMap_DEVICE source, size_t mapSize, size_t tensorSize);
 void copyTensorFromDevice(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);
 void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);
 void copyMapFromHost(TensorMap_DEVICE mHost, TensorMap_DEVICE m, size_t size);

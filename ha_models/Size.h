@@ -1,12 +1,12 @@
 #pragma once
 
-#include <memory>
+#include <vector>
 #include <cstdarg>
 
 struct Size {
 public:
 
-	std::shared_ptr<size_t[]> sizes;
+	std::vector<size_t> sizes;
 	size_t dim = 0;
 	size_t size = 0;
 	size_t bidimensionalSize = 0;
@@ -15,15 +15,21 @@ public:
 		
 	}
 
+	Size(const Size& s) {
+		this->dim = s.dim;
+		this->size = s.size;
+		this->bidimensionalSize = s.bidimensionalSize;
+		this->sizes = std::vector<size_t>(s.sizes);
+	}
+
 	Size(size_t s, ...) {
 		dim = s;
-		sizes = std::shared_ptr<size_t[]>(new size_t[dim]);
 		std::va_list argList;
 		va_start(argList, s);
 
 		for (size_t i = 0; i < dim; i++) {
 			size_t a = va_arg(argList, size_t);
-			sizes.get()[i] = a;
+			sizes.push_back(a);
 		}
 
 		va_end(argList);
@@ -34,13 +40,12 @@ public:
 	// For user friendly interfacing
 	Size(int s, ...) {
 		dim = s;
-		sizes = std::shared_ptr<size_t[]>(new size_t[dim]);
 		std::va_list argList;
 		va_start(argList, s);
 
 		for (size_t i = 0; i < dim; i++) {
 			size_t a = va_arg(argList, int);
-			sizes.get()[i] = a;
+			sizes.push_back(a);
 		}
 
 		va_end(argList);
@@ -50,7 +55,7 @@ public:
 
 	Size(size_t dim, size_t* s) {
 		this->dim = dim;
-		sizes = std::shared_ptr<size_t[]>(s);
+		for (size_t i = 0; i < dim; i++) sizes.push_back(s[i]);
 		calConstants();
 	}
 
@@ -60,11 +65,19 @@ public:
 
 	size_t getDimSize(size_t d) {
 		if (d >= dim) return 1;
-		return sizes.get()[d];
+		return sizes[d];
 	}
 
 	size_t last() {
 		return getDimSize(dim - 1);
+	}
+
+	void extend(size_t s) {
+		dim++;
+		size *= s;
+		if (dim == 2) bidimensionalSize = 1;
+		else if (dim > 2) bidimensionalSize *= s;
+		sizes.push_back(s);
 	}
 
 private:
@@ -75,10 +88,10 @@ private:
 
 		for (size_t i = 0; i < dim; i++) {
 			if (i > 1) {
-				bidimensionalSize *= sizes.get()[i];
+				bidimensionalSize *= sizes[i];
 			}
-			size_t a = sizes.get()[i];
-			size *= sizes.get()[i];
+			size_t a = sizes[i];
+			size *= sizes[i];
 		}
 	}
 

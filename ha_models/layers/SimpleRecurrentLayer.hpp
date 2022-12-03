@@ -5,6 +5,8 @@
 class SimpleRecurrentLayer : public Layer {
 private:
 
+	size_t lastSize;
+
 	Tensor weightsInput;
 
 	Tensor weightsHiddenPast;
@@ -31,17 +33,21 @@ public:
 
 	void setPool(size_t newSize);
 
-	size_t getInputSize();
-	size_t getOutputSize();
+	Size getInputSize();
+	Size getOutputSize();
+	size_t getParamCount();
+	size_t getStateCount();
 
 	unsigned short stepCount();
-	unsigned short stepAsync(Tensor& input);
+	unsigned short stepAsync(Tensor input);
 
 	void rndParams(CurandManager& curandManager);
-	size_t loadParams(Tensor params[]);
-	size_t loadState(Tensor state[]);
+	void loadParams(Tensor params[]);
+	void loadState(Tensor state[]);
+	void getParamsSizes(Size sizes[]);
+	void getStateSizes(Size sizes[]);
 
-	Tensor& getValue();
+	Tensor getValue();
 
 };
 

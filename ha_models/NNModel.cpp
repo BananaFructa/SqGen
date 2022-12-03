@@ -1,16 +1,17 @@
 #include "NNModel.hpp"
 
-NNModel::NNModel(size_t poolSize) {
-	this->poolSize = poolSize;
+NNModel::NNModel(){
 }
 
-NNModel::~NNModel() {
-	for (int i = 0; i < layers.size(); i++) layers[i]->free();
+NNModel::NNModel(size_t poolSize) {
+	this->poolSize = poolSize;
 }
 
 void NNModel::addLayer(Layer* layer) {
 	layer->setPool(poolSize);
 	layers.push_back(layer);
+	variableCount += layer->getParamCount();
+	stateCount += layer->getStateCount();
 }
 
 bool NNModel::takeAsyncStep(Tensor& input, size_t currentLayer) {
@@ -18,8 +19,7 @@ bool NNModel::takeAsyncStep(Tensor& input, size_t currentLayer) {
 		return layers[currentLayer]->stepAsync(input) == 0;
 	}
 	else {
-		Tensor sliced = layers[currentLayer - 1]->getValue().slice(0, input.size.getDimSize(input.size.dim - 1));
-		return layers[currentLayer]->stepAsync(sliced) == 0;
+		return layers[currentLayer]->stepAsync(layers[currentLayer - 1]->getValue()) == 0;
 	}
 }
 
@@ -37,7 +37,7 @@ size_t NNModel::layerCount() {
 	return layers.size();
 }
 
-Tensor& NNModel::getPrediction() {
+Tensor NNModel::getPrediction() {
 	return layers[layerCount() - 1]->getValue();
 }
 
@@ -48,10 +48,23 @@ void NNModel::randomizeUniform(CurandManager& curandManager) {
 void NNModel::loadModel(Tensor variables[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
-		current += layers[i]->loadParams(&variables[current]);
+		layers[i]->loadParams(&variables[current]);
+		current += layers[i]->getParamCount();
+	}
+}
+
+void NNModel::loadState(Tensor states[]) {
+	size_t current = 0;
+	for (int i = 0; i < layerCount(); i++) {
+		layers[i]->loadState(&states[current]);
+		current += layers[i]->getStateCount();
 	}
 }
 
 void NNModel::disableDefInternalAlloc() {
 	for (int i = 0; i < layerCount(); i++) layers[i]->disableDefInternalAlloc();
+}
+
+std::vector<Layer*>& NNModel::getLayers() {
+	return layers;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../cuda_kernels/kernels.cuh"
+#include "cuda_kernels/kernels.cuh"
 #include "Size.h"
 
 #include "OperationDetails.hpp"
@@ -64,6 +64,8 @@ public:
 	* are equal and references to the 2nd, 3rd and 4th columns from the initial tesnor.)
 	*/
 	Tensor slice(size_t begin, size_t end);
+
+	void copyTo(Tensor& t);
 
 	/*
 	* @return The GPU tensor data pointer

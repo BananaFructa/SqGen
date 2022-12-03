@@ -175,7 +175,8 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 
 	sliced.mapSize = 1 + endBlockId - beginBlockId;
 
-	sliced.mapBlockSize = mapBlockSize;
+	if (sliced.mapSize == 1) sliced.mapBlockSize = (end - begin) * subSize;
+	else sliced.mapBlockSize = mapBlockSize;
 
 	sliced.blockAllignOffset = beginBlockIndex;
 
@@ -193,6 +194,10 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 	}
 
 	return sliced;
+}
+
+void Tensor::copyTo(Tensor& t) {
+	copyTensorD2D(t.getGpuMapPointer(), gpuTensorMap, mapSize, size.size);
 }
 
 Tensor_DEVICE Tensor::getGpuDataPointer() {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../cuda_kernels/kernels.cuh"
+#include "../cuda_kernels/kernels.cuh"
 #include "../Tensor.hpp"
 
 #include <vector>

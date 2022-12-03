@@ -6,6 +6,8 @@
 class DenseLayer : public Layer {
 private:
 
+	size_t lastSize;
+
 	Tensor layer;
 	Tensor weights;
 	Tensor biases;
@@ -26,15 +28,17 @@ public:
 
 	void setPool(size_t newSize);
 
-	size_t getInputSize();
-	size_t getOutputSize();
+	Size getInputSize();
+	Size getOutputSize();
+	size_t getParamCount();
 
 	unsigned short stepCount();
-	unsigned short stepAsync(Tensor& input);
+	unsigned short stepAsync(Tensor input);
 
 	void rndParams(CurandManager& curandManager);
-	size_t loadParams(Tensor params[]);
+	void loadParams(Tensor params[]);
+	void getParamsSizes(Size sizes[]);
 
-	Tensor& getValue();
+	Tensor getValue();
 
 };

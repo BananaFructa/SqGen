@@ -13,22 +13,28 @@ void DenseLayer::free() {
 	weights.free();
 }
 
-size_t DenseLayer::getInputSize() {
-	return inputSize;
+Size DenseLayer::getInputSize() {
+	return Size((size_t)2,(size_t)1,inputSize);
 }
 
-size_t DenseLayer::getOutputSize() {
-	return size;
+Size DenseLayer::getOutputSize() {
+	return Size((size_t)2,(size_t)1,size);
+}
+
+size_t DenseLayer::getParamCount() {
+	return 2;
 }
 
 unsigned short DenseLayer::stepCount() {
 	return 3 + 2 * (activation == Activation::SOFTMAX);
 }
 
-unsigned short DenseLayer::stepAsync(Tensor& input) {
+unsigned short DenseLayer::stepAsync(Tensor input) {
 
 	// Only use as much memory space as needed (equal to the batch size of the input)
-	Tensor slicedLayer = layer.slice(0, input.size.getDimSize(input.size.dim - 1));
+	Tensor slicedLayer = layer.slice(0, input.size.last());
+
+	lastSize = input.size.last();
 
 	switch (step++) {
 		case 0:
@@ -38,7 +44,7 @@ unsigned short DenseLayer::stepAsync(Tensor& input) {
 			slicedLayer = slicedLayer + biases;
 			break;
 		case 2:
-			if (activation != Activation::SOFTMAX) {
+			if (activation != Activation::SOFTMAX) { // TODO: erase sum mem
 				slicedLayer.functionPass(activationToKernelFunc(activation));
 				step = 0;
 			}
@@ -57,8 +63,8 @@ unsigned short DenseLayer::stepAsync(Tensor& input) {
 	return step;
 }
 
-Tensor& DenseLayer::getValue() {
-	return layer;
+Tensor DenseLayer::getValue() {
+	return layer.slice(0,lastSize);
 }
 
 void DenseLayer::setPool(size_t newSize) {
@@ -70,15 +76,19 @@ void DenseLayer::setPool(size_t newSize) {
 
 void DenseLayer::rndParams(CurandManager& curandManager) {
 	if (weights.size.size == 0) {
-		weights.init(Size((size_t)2, inputSize, size));
-		biases.init(Size((size_t)2, (size_t)1, size));
+		weights.init(Size((size_t)3, inputSize, size, (size_t)1));
+		biases.init(Size((size_t)3, (size_t)1, size, (size_t)1));
 	}
 	curandManager.randomizeTensorUniform(weights, -1, 1);
 	curandManager.randomizeTensorUniform(biases, -1, 1);
 }
 
-size_t DenseLayer::loadParams(Tensor params[]) {
+void DenseLayer::loadParams(Tensor params[]) {
 	weights = params[0];
 	biases = params[1];
-	return 2;
+}
+
+void DenseLayer::getParamsSizes(Size sizes[]) {
+	sizes[0] = Size((size_t)2, inputSize, size);
+	sizes[1] = Size((size_t)2, (size_t)1, size);
 }

@@ -31,22 +31,32 @@ void SimpleRecurrentLayer::setPool(size_t newSize) {
 	layer.init(outSize);
 }
 
-size_t SimpleRecurrentLayer::getInputSize() {
-	return inputSize;
+Size SimpleRecurrentLayer::getInputSize() {
+	return Size((size_t)2,(size_t)1,inputSize);
 }
 
-size_t SimpleRecurrentLayer::getOutputSize() {
-	return size;
+Size SimpleRecurrentLayer::getOutputSize() {
+	return Size((size_t)2,(size_t)1,size);
+}
+
+size_t SimpleRecurrentLayer::getParamCount() {
+	return 5;
+}
+
+size_t SimpleRecurrentLayer::getStateCount() {
+	return 1;
 }
 
 unsigned short SimpleRecurrentLayer::stepCount() {
 	return 6;
 }
 
-unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
+unsigned short SimpleRecurrentLayer::stepAsync(Tensor input) {
 
 	Tensor layerSliced = layer.slice(0, input.size.last());
 	Tensor hiddenSliced = hiddenLayer.slice(0, input.size.last());
+
+	lastSize = input.size.last();
 
 	switch (step++) {
 		case 0:
@@ -56,16 +66,16 @@ unsigned short SimpleRecurrentLayer::stepAsync(Tensor& input) {
 			hiddenSliced += input * weightsInput;
 			break;
 		case 2:
-			hiddenSliced = hiddenSliced + biasesHidden; // 1
+			hiddenSliced = hiddenSliced + biasesHidden;
 			break;
 		case 3:
 			hiddenSliced.functionPass(activationToKernelFunc(hiddenActivation));
 			break;
 		case 4:
-			layerSliced = hiddenSliced % weightsHiddenPresent;
+			layerSliced = hiddenSliced % biasesHidden;
 			break;
 		case 5:
-			layerSliced = layerSliced + biasesOutput; // 1
+			layerSliced = layerSliced + biasesOutput;
 			break;
 		case 6:
 			layerSliced.functionPass(activationToKernelFunc(activation));
@@ -90,20 +100,30 @@ void SimpleRecurrentLayer::rndParams(CurandManager& curandManager) {
 	curandManager.randomizeTensorUniform(biasesOutput, -1, 1);
 }
 
-size_t SimpleRecurrentLayer::loadParams(Tensor params[]) {
+void SimpleRecurrentLayer::loadParams(Tensor params[]) {
 	weightsInput = params[0];
 	weightsHiddenPast = params[1];
 	weightsHiddenPresent = params[2];
 	biasesHidden = params[3];
 	biasesOutput = params[4];
-	return 5;
 }
 
-size_t SimpleRecurrentLayer::loadState(Tensor state[]) {
+void SimpleRecurrentLayer::loadState(Tensor state[]) {
 	hiddenLayer = state[0];
-	return 1;
 }
 
-Tensor& SimpleRecurrentLayer::getValue() {
-	return layer;
+void SimpleRecurrentLayer::getParamsSizes(Size sizes[]) {
+	sizes[0] = Size((size_t)2, inputSize, size);
+	sizes[1] = Size((size_t)2, 1, size);
+	sizes[2] = Size((size_t)2, 1, size);
+	sizes[3] = Size((size_t)2, 1, size);
+	sizes[4] = Size((size_t)2, 1, size);
+}
+
+void SimpleRecurrentLayer::getStateSizes(Size sizes[]) {
+	sizes[0] = hiddenLayer.size;
+}
+
+Tensor SimpleRecurrentLayer::getValue() {
+	return layer.slice(0,lastSize);
 }

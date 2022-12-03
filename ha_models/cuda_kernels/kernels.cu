@@ -97,7 +97,7 @@ __global__ void mulTensor_kernel(Tensor_DEVICE tTarget,
 		TENSOR_TYPE sum = 0;
 
 		for (size_t i = 0; i < cl; i++) {
-			sum += tSource1[(poolId % poolSize1) * prodLc + line + i * l] * tSource2[(poolId % poolSize2) * prodLc + i + column * cl];
+			sum += tSource1[(poolId % poolSize1) * l * cl + line + i * l] * tSource2[(poolId % poolSize2) * cl * c + i + column * cl];
 		}
 
 		size_t targetId = poolId * prodLc + line + column * l;
@@ -137,8 +137,8 @@ __global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
 
 		for (size_t i = 0; i < cl; i++) {
 
-			accesPoint1 = (poolId % poolSize1) * prodLc + line + i * l + allignOffset1;
-			accesPoint2 = (poolId % poolSize2) * prodLc + i + column * cl + allignOffset2;
+			accesPoint1 = (poolId % poolSize1) * l * cl + line + i * l + allignOffset1;
+			accesPoint2 = (poolId % poolSize2) * cl * c + i + column * cl + allignOffset2;
 
 			sum += map1[accesPoint1 / blockSize1][accesPoint1 % blockSize1] * map2[accesPoint2 / blockSize2][accesPoint2 % blockSize2];
 		}
@@ -287,6 +287,10 @@ AllocRes allocateTensor(size_t size,size_t mapSize) {
 	void* tensorData;
 	cudaMalloc(&tensorData, size * sizeof(TENSOR_TYPE) + mapSize * sizeof(TENSOR_TYPE*));
 	return { (Tensor_DEVICE)((TensorMap_DEVICE)tensorData + mapSize),(TensorMap_DEVICE)tensorData };
+}
+
+void copyTensorD2D(TensorMap_DEVICE target, TensorMap_DEVICE source, size_t mapSize, size_t tensorSize) {
+	cudaMemcpy(target, source, tensorSize * sizeof(TENSOR_TYPE) + mapSize * sizeof(TENSOR_TYPE*), cudaMemcpyDeviceToDevice);
 }
 
 void bindTensor(cudaStream_t *stream) {
