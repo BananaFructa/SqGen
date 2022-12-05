@@ -6,6 +6,7 @@
 struct NNModel {
 
 	std::vector<Layer*> layers;
+	bool internalAlloc = true;
 
 public:
 

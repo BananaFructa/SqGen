@@ -9,12 +9,12 @@
 struct NNAgentModelManager {
 private:
 
-	bool hasVariables; // It wouldn't make sense for this to be false wouldn't it ? But it will be here for consistency
-	bool hasStates;
+	bool hasVariables = false; // It wouldn't make sense for this to be false wouldn't it ? But it will be here for consistency
+	bool hasStates = false;
 
-	size_t poolSize;
-	size_t variableCount;
-	size_t stateCount;
+	size_t poolSize = 0;
+	size_t variableCount = 0;
+	size_t stateCount = 0;
 
 	std::vector<Size> variableSizes;
 	std::vector<Tensor*> preAllocatedVariables;
@@ -26,7 +26,7 @@ private:
 
 	NNModel supermodel;
 
-	CurandManager& curandManager;
+	CurandManager curandManager;
 
 	std::vector<ReferenceMappedTensor> compiledData;
 	std::vector<ReferenceMappedTensor> compiledState;
@@ -38,7 +38,8 @@ public:
 
 	Size inputSize;
 
-	NNAgentModelManager(NNModel& model,CurandManager& curandmanager);
+	NNAgentModelManager();
+	NNAgentModelManager(NNModel model,CurandManager curandmanager);
 	void compile(Agent agents[], size_t agentCount);
 	Tensor predict(Tensor& input);
 

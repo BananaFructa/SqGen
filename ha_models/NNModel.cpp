@@ -8,6 +8,7 @@ NNModel::NNModel(size_t poolSize) {
 }
 
 void NNModel::addLayer(Layer* layer) {
+	if (!internalAlloc) layer->disableDefInternalAlloc();
 	layer->setPool(poolSize);
 	layers.push_back(layer);
 	variableCount += layer->getParamCount();
@@ -48,6 +49,7 @@ void NNModel::randomizeUniform(CurandManager& curandManager) {
 void NNModel::loadModel(Tensor variables[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
+		if (layers[i]->getParamCount() == 0) continue;
 		layers[i]->loadParams(&variables[current]);
 		current += layers[i]->getParamCount();
 	}
@@ -56,13 +58,14 @@ void NNModel::loadModel(Tensor variables[]) {
 void NNModel::loadState(Tensor states[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
+		if (layers[i]->getStateCount() == 0) continue;
 		layers[i]->loadState(&states[current]);
 		current += layers[i]->getStateCount();
 	}
 }
 
 void NNModel::disableDefInternalAlloc() {
-	for (int i = 0; i < layerCount(); i++) layers[i]->disableDefInternalAlloc();
+	internalAlloc = false;
 }
 
 std::vector<Layer*>& NNModel::getLayers() {

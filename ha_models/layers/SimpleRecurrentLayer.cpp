@@ -87,11 +87,11 @@ unsigned short SimpleRecurrentLayer::stepAsync(Tensor input) {
 
 void SimpleRecurrentLayer::rndParams(CurandManager& curandManager) {
 	if (weightsInput.size.size == 0) {
-		weightsInput.init(Size((size_t)2, inputSize, size));
-		weightsHiddenPast.init(Size((size_t)2, 1, size));
-		weightsHiddenPresent.init(Size((size_t)2, 1, size));
-		biasesHidden.init(Size((size_t)2, 1, size));
-		biasesOutput.init(Size((size_t)2, 1, size));
+		weightsInput.init(Size((size_t)3, inputSize, size, (size_t)1));
+		weightsHiddenPast.init(Size((size_t)3, 1, size, (size_t)1));
+		weightsHiddenPresent.init(Size((size_t)3, 1, size, (size_t)1));
+		biasesHidden.init(Size((size_t)3, 1, size, (size_t)1));
+		biasesOutput.init(Size((size_t)3, 1, size, (size_t)1));
 	}
 	curandManager.randomizeTensorUniform(weightsInput, -1, 1);
 	curandManager.randomizeTensorUniform(weightsHiddenPast, -1, 1);
@@ -121,7 +121,7 @@ void SimpleRecurrentLayer::getParamsSizes(Size sizes[]) {
 }
 
 void SimpleRecurrentLayer::getStateSizes(Size sizes[]) {
-	sizes[0] = hiddenLayer.size;
+	sizes[0] = Size((size_t)2, (size_t)1, size);
 }
 
 Tensor SimpleRecurrentLayer::getValue() {

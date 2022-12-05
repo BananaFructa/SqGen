@@ -29,9 +29,14 @@ Tensor* NNAgentModelManager::getStateSet() {
 
 }
 
-NNAgentModelManager::NNAgentModelManager(NNModel& model, CurandManager& manager) : curandManager(manager) {
+
+NNAgentModelManager::NNAgentModelManager() {
+}
+
+NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 
 	// Copy the supermodel arhitecture
+	this->curandManager = manager;
 	this->supermodel = model;
 	this->poolSize = model.poolSize;
 	this->variableCount = model.variableCount;
@@ -54,6 +59,7 @@ NNAgentModelManager::NNAgentModelManager(NNModel& model, CurandManager& manager)
 	// Iterate through layers and get the sizes of each variable tensor
 	if (hasVariables) {
 		for (size_t i = 0; i < layers.size(); i++) {
+			if (layers[i]->getParamCount() == 0) continue;
 			layers[i]->getParamsSizes(&variableSizes[current]);
 			current += layers[i]->getParamCount();
 		}
@@ -64,6 +70,7 @@ NNAgentModelManager::NNAgentModelManager(NNModel& model, CurandManager& manager)
 	// Iterate through layers and get the sizes of each state tensor
 	if (hasStates) {
 		for (size_t i = 0; i < layers.size(); i++) {
+			if (layers[i]->getStateCount() == 0) continue;
 			layers[i]->getStateSizes(&stateSizes[current]);
 			current += layers[i]->getStateCount();
 		}

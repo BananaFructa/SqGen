@@ -1,5 +1,8 @@
 #include "CurandManager.h"
 
+CurandManager::CurandManager() {
+}
+
 CurandManager::CurandManager(size_t statePoolSize,unsigned long seed) {
 	this->poolSize = statePoolSize;
 	this->seed = seed;
@@ -18,12 +21,13 @@ void CurandManager::randomizeTensorUniform(Tensor_DEVICE t, size_t size, float l
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
-	while (size > poolSize) {
+	while (size >= poolSize) {
 		CudaKernels::randomizeTensorUniform(curandStatePool, t + begin, poolSize, low, high);
 		gpuSyncStream(&randStream);
 		size -= poolSize;
 		begin += poolSize;
 	}
+	if (size != 0)
 	CudaKernels::randomizeTensorUniform(curandStatePool, t + begin, size, low, high);
 	bindStream(DEFAULT_STREAM);
 }
@@ -33,12 +37,13 @@ void CurandManager::rndOffsetTensorUniform(Tensor_DEVICE t, size_t size, float p
 	size_t seg = size / poolSize;
 	size_t begin = 0;
 	bindStream(&randStream);
-	while (size > poolSize) {
+	while (size >= poolSize) {
 		CudaKernels::rndOffsetTensorUniform(curandStatePool, t + begin, poolSize, prob, low, high);
 		gpuSyncStream(&randStream);
 		size -= poolSize;
 		begin += poolSize;
 	}
+	if (size != 0)
 	CudaKernels::rndOffsetTensorUniform(curandStatePool, t + begin, size, prob, low, high);
 	bindStream(DEFAULT_STREAM);
 }
@@ -51,6 +56,6 @@ void CurandManager::rndOffsetTensorUniform(Tensor& t, float prob, float low, flo
 	rndOffsetTensorUniform(t.getGpuDataPointer(), t.size.size, prob, low, high);
 }
 
-CurandManager::~CurandManager() {
+void CurandManager::free() {
 	cudaFree(curandStatePool);
 }
