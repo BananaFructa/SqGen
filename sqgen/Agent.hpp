@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Position.h"
+
 #define NULL_PARENT 0
 
 typedef size_t SpecieID;
@@ -12,9 +14,7 @@ struct Agent {
 	SpecieID specieId;
 	// Unique identifier for the specific agent (used for state NN values)
 	AgentID id;
-	// Pos x of the agent
-	size_t x;
-	// Pos y of the agent
-	size_t y;
+	// Pos
+	Position pos;
 
 };

@@ -88,6 +88,11 @@ void DenseLayer::loadParams(Tensor params[]) {
 	biases = params[1];
 }
 
+void DenseLayer::fetchParams(Tensor params[]) {
+	params[0] = weights;
+	params[1] = biases;
+}
+
 void DenseLayer::getParamsSizes(Size sizes[]) {
 	sizes[0] = Size((size_t)2, inputSize, size);
 	sizes[1] = Size((size_t)2, (size_t)1, size);

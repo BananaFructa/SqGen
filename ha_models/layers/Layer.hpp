@@ -35,6 +35,8 @@ public:
 	virtual void getStateSizes(Size sizes[]) {};
 	virtual void loadParams(Tensor params[]) {};
 	virtual void loadState(Tensor states[]) {};
+	virtual void fetchParams(Tensor params[]) {};
+	virtual void fetchStates(Tensor states[]) {};
 
 	virtual unsigned short stepCount() { return 0; };
 	virtual unsigned short stepAsync(Tensor input) { return 0; };

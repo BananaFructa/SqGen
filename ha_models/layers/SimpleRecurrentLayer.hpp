@@ -46,6 +46,8 @@ public:
 	void loadState(Tensor state[]);
 	void getParamsSizes(Size sizes[]);
 	void getStateSizes(Size sizes[]);
+	void fetchParams(Tensor params[]);
+	virtual void fetchStates(Tensor states[]);
 
 	Tensor getValue();
 

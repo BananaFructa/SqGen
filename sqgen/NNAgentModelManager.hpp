@@ -5,6 +5,7 @@
 #include "Agent.hpp"
 #include "../ha_models/NNModel.hpp"
 #include "../ha_models/ReferenceMappedTensor.hpp"
+#include "../ha_models/TensorMemAllocator.hpp"
 
 struct NNAgentModelManager {
 private:
@@ -15,6 +16,8 @@ private:
 	size_t poolSize = 0;
 	size_t variableCount = 0;
 	size_t stateCount = 0;
+
+	// Would have used the tensor allocator must is more efficient this way
 
 	std::vector<Size> variableSizes;
 	std::vector<Tensor*> preAllocatedVariables;

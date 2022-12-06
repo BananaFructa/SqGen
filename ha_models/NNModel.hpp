@@ -26,8 +26,11 @@ public:
 	Tensor getPrediction();
 
 	void randomizeUniform(CurandManager& curandManager);
+
 	void loadModel(Tensor variables[]);
 	void loadState(Tensor states[]);
+	void fetchModel(Tensor variables[]);
+	void fetchState(Tensor states[]);
 
 	void disableDefInternalAlloc();
 

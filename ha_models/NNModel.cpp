@@ -64,6 +64,24 @@ void NNModel::loadState(Tensor states[]) {
 	}
 }
 
+void NNModel::fetchModel(Tensor variables[]) {
+	size_t current = 0;
+	for (int i = 0; i < layerCount(); i++) {
+		if (layers[i]->getParamCount() == 0) continue;
+		layers[i]->fetchParams(&variables[current]);
+		current += layers[i]->getParamCount();
+	}
+}
+
+void NNModel::fetchState(Tensor states[]) {
+	size_t current = 0;
+	for (int i = 0; i < layerCount(); i++) {
+		if (layers[i]->getStateCount() == 0) continue;
+		layers[i]->fetchStates(&states[current]);
+		current += layers[i]->getStateCount();
+	}
+}
+
 void NNModel::disableDefInternalAlloc() {
 	internalAlloc = false;
 }

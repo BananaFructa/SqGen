@@ -37,6 +37,7 @@ public:
 
 	void rndParams(CurandManager& curandManager);
 	void loadParams(Tensor params[]);
+	void fetchParams(Tensor params[]);
 	void getParamsSizes(Size sizes[]);
 
 	Tensor getValue();

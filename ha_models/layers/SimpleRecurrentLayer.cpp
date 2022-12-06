@@ -124,6 +124,18 @@ void SimpleRecurrentLayer::getStateSizes(Size sizes[]) {
 	sizes[0] = Size((size_t)2, (size_t)1, size);
 }
 
+void SimpleRecurrentLayer::fetchParams(Tensor params[]) {
+	params[0] = weightsInput;
+	params[1] = weightsHiddenPast;
+	params[2] = weightsHiddenPresent;
+	params[3] = biasesHidden;
+	params[4] = biasesOutput;
+}
+
+void SimpleRecurrentLayer::fetchStates(Tensor states[]) {
+	states[0] = hiddenLayer;
+}
+
 Tensor SimpleRecurrentLayer::getValue() {
 	return layer.slice(0,lastSize);
 }

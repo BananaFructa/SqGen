@@ -2,46 +2,65 @@
 
 #include <vector>
 
+#include <map>
+#include <cmath>
+#include "Constant.h"
 #include "Agent.hpp"
+#include "Position.h"
 #include "NNAgentModelManager.hpp"
+#include "../ha_models/ReferenceMappedTensor.hpp"
+#include "../ha_models/TensorMemAllocator.hpp"
 
 
 struct Simulation {
 private:
 //  =======================================================================
 
-	const size_t nnPoolSize = 100'000;
-
-	const size_t curandPoolSize = 1000;
-	const unsigned long curandSeed = 123;
-
-	CurandManager curandManager = CurandManager(curandPoolSize, curandSeed);
+	CurandManager curandManager = CurandManager(Constants::curandPoolSize, Constants::curandSeed);
 
 	// Specie Information Encoder
-	NNModel SIE_Network = NNModel(nnPoolSize);
+	NNModel SIE_Network = NNModel(Constants::nnPoolSize);
 	NNAgentModelManager SIE_Manager;
 
 	// Action Processing
-	NNModel AP_Netowrk = NNModel(nnPoolSize);
-	NNAgentModelManager AP_Network;
+	NNModel AP_Netowrk = NNModel(Constants::nnPoolSize);
+	NNAgentModelManager AP_Manager;
 
 	void buildSIE(NNModel& model);
 	void buildAP(NNModel& model);
 
 //  =======================================================================
 
-	const size_t mapSize = 50;
+	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
+	Tensor gpuSignalMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
+	ReferenceMappedTensor gpuSpecieSignalMap = ReferenceMappedTensor(Size(2, Constants::spicieSignalCount, Constants::totalMapSize));
 
-	Tensor gpuMapSet = Tensor(Size(3, mapSize, mapSize, 3));
+	std::map<SpecieID, Tensor> specieSignalDict;
 
+	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(Size(1, Constants::spicieSignalCount)));
 
-	// TODO: figure out signal id gpu process
+//  =======================================================================
+
+	SpecieID specieCounter = 0;
+	AgentID lastAgentID = 0;
+	std::vector<AgentID> avalabileAgentIDs;
+	std::map<SpecieID, size_t> specieInstaceCounter;
 
 public:
 
 	std::vector<Agent> agents;
 
 	Simulation();
+
+	void addNewAgent();
+	void addAgent(Agent parent);
 	void removeAgent();
+
+	void createNewSpecie();
+	void createSpecie(SpecieID parentSpecie);
+	void removeSpecie();
+
+	AgentID getAgentID();
+	SpecieID getSpecieID();
 
 };
