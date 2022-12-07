@@ -196,6 +196,12 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 	return sliced;
 }
 
+Tensor Tensor::squeeze() {
+	Tensor squeezed = *this;
+	squeezed.size = size.squeeze();
+	return squeezed;
+}
+
 void Tensor::copyTo(Tensor& t) {
 	copyTensorD2D(t.getGpuMapPointer(), gpuTensorMap, mapSize, size.size);
 }

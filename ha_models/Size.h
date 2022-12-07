@@ -80,6 +80,15 @@ public:
 		sizes.push_back(s);
 	}
 
+	Size squeeze() {
+		std::vector<size_t> ss;
+		for (size_t i = 0; i < dim; i++) {
+			if (sizes[i] != 1) ss.push_back(sizes[i]);
+		}
+		if (ss.empty() && size == 1) ss.push_back(1);
+		return Size(ss.size(), &ss[0]);
+	}
+
 private:
 
 	void calConstants() {

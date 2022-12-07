@@ -153,8 +153,7 @@ __global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
 __global__ void funcPassReLU_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
-		bool p = t[i] > 0;
-		t[i] = t[i] * p + t[i] * 0.1f * !p;
+		t[i] = max(t[i] * 0.1f,t[i]);
 	}
 }
 
@@ -164,8 +163,7 @@ __global__ void funcPassMappedReLU_kernel(TensorMap_DEVICE m, size_t blockSize, 
 		size_t accesPoint = i + allignOffset;
 		size_t blockId = accesPoint / blockSize;
 		size_t blockIndex = accesPoint % blockSize;
-		bool p = m[blockId][blockIndex] > 0;
-		m[blockId][blockIndex] = m[blockId][blockIndex] * p + m[blockId][blockIndex] * 0.1f * !p;
+		m[blockId][blockIndex] = max(m[blockId][blockIndex] * 0.1f, m[blockId][blockIndex]);
 	}
 }
 
@@ -276,11 +274,11 @@ __global__ void randomizeTensorUniform_kernel(curandState_t* state, Tensor_DEVIC
 	}
 }
 
-__global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float low, float absoluteDifference) {
+__global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float low, float absoluteDifference, float zprob) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-	if (i < size && curand_uniform(&state[i]) <= prob) {
-		t[i] += curand_uniform(&state[i]) * absoluteDifference + low;
-	}
+	bool z = t[i] == 0;
+	bool u = i < size && ((!z && curand_uniform(&state[i]) < prob) || (z && curand_uniform(&state[i]) < zprob));
+	if (u) t[i] += (curand_uniform(&state[i]) * absoluteDifference + low);
 }
 
 AllocRes allocateTensor(size_t size,size_t mapSize) {
@@ -460,11 +458,11 @@ void CudaKernels::randomizeTensorUniform(curandState_t* state, Tensor_DEVICE t, 
 	randomizeTensorUniform_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (state, t, size, lowerRange, fabsf(lowerRange - higherRange));
 }
 
-void CudaKernels::rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange) {
+void CudaKernels::rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange, float zprob) {
 	dim3 threadSize(256);
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 
-	rndOffsetTensorUniform_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (state, t, size, prob, lowerRange, fabsf(lowerRange - higherRange));
+	rndOffsetTensorUniform_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (state, t, size, prob, lowerRange, fabsf(lowerRange - higherRange), zprob);
 }
 
 void gpuSync() {

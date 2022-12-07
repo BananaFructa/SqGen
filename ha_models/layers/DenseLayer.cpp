@@ -26,7 +26,7 @@ size_t DenseLayer::getParamCount() {
 }
 
 unsigned short DenseLayer::stepCount() {
-	return 3 + 2 * (activation == Activation::SOFTMAX);
+	return 3 + 3 * (activation == Activation::SOFTMAX);
 }
 
 unsigned short DenseLayer::stepAsync(Tensor input) {
@@ -53,9 +53,12 @@ unsigned short DenseLayer::stepAsync(Tensor input) {
 			}
 			break;
 		case 3:
-			slicedLayer.sumAllElementsAcrossDim(auxSumMem);
+			auxSumMem.initZero();
 			break;
 		case 4:
+			slicedLayer.sumAllElementsAcrossDim(auxSumMem);
+			break;
+		case 5:
 			slicedLayer.normalizeAcrossDim(auxSumMem);
 			step = 0;
 			break;

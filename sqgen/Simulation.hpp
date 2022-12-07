@@ -1,9 +1,10 @@
 #pragma once
 
 #include <vector>
-
 #include <map>
-#include <cmath>
+
+#include "Random.hpp"
+#include "RndPosGenerator.h"
 #include "Constant.h"
 #include "Agent.hpp"
 #include "Position.h"
@@ -11,12 +12,68 @@
 #include "../ha_models/ReferenceMappedTensor.hpp"
 #include "../ha_models/TensorMemAllocator.hpp"
 
+/*
+
+	INPUT LAYER:
+
+	=
+	|
+	| 1x Current food value
+	|
+	=
+	|
+	| 1x Current food tile value
+	|
+	=
+	|
+	| 4x Visual directional latent space
+	|
+	=
+	|
+	| 4x Signal directional average
+	|
+	=
+
+	OUTPUT LAYER:
+
+	=
+	|
+	| 1x Eat decision
+	|
+	=
+	|
+	| 1x Multiply decision
+	|
+	=
+	|
+	| 4x UP/DOWN/RIGHT/LEFT
+	|
+	=
+	|
+	| 1x Attack decision
+	|
+	=
+	|
+	| 1x Share decision
+	|
+	=
+	|
+	| 1x Change signal
+	|
+	=
+
+*/
 
 struct Simulation {
 private:
+public:
 //  =======================================================================
 
-	CurandManager curandManager = CurandManager(Constants::curandPoolSize, Constants::curandSeed);
+	RndPosGenerator randomPositionGenerator;
+
+//  =======================================================================
+
+	CurandManager curandManager = CurandManager(Constants::curandPoolSize, Constants::seed);
 
 	// Specie Information Encoder
 	NNModel SIE_Network = NNModel(Constants::nnPoolSize);
@@ -46,6 +103,8 @@ private:
 	std::vector<AgentID> avalabileAgentIDs;
 	std::map<SpecieID, size_t> specieInstaceCounter;
 
+//  =======================================================================
+
 public:
 
 	std::vector<Agent> agents;
@@ -54,11 +113,11 @@ public:
 
 	void addNewAgent();
 	void addAgent(Agent parent);
-	void removeAgent();
+	void removeAgent(size_t index);
 
-	void createNewSpecie();
-	void createSpecie(SpecieID parentSpecie);
-	void removeSpecie();
+	void update();
+
+	bool positionOccupied(Position pos);
 
 	AgentID getAgentID();
 	SpecieID getSpecieID();

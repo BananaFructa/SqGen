@@ -65,6 +65,8 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 		}
 	}
 
+	if (hasVariables) outputParamCount = layers[layers.size() - 1]->getParamCount();
+
 	current = 0;
 
 	// Iterate through layers and get the sizes of each state tensor
@@ -145,7 +147,7 @@ void NNAgentModelManager::eraseSpecie(SpecieID id) {
 
 }
 
-void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float prob, float low, float high) {
+void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float prob, float low, float high, float zprob) {
 
 	if (!hasVariables) return;
 
@@ -156,7 +158,7 @@ void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float pro
 	for (size_t i = 0; i < variableSizes.size(); i++) {
 
 		parentData[i].copyTo(tensorsData[i]);
-		curandManager.rndOffsetTensorUniform(tensorsData[i], prob, low, high);
+		curandManager.rndOffsetTensorUniform(tensorsData[i], prob, low, high, zprob);
 
 	}
 
@@ -164,7 +166,6 @@ void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float pro
 }
 
 void NNAgentModelManager::registerNewSpiece(SpecieID id, float low, float high) {
-
 	if (!hasVariables) return;
 
 	Tensor* tensorData = getVariableSet();
@@ -172,6 +173,41 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, float low, float high) 
 	for (size_t i = 0; i < variableCount; i++) {
 
 		curandManager.randomizeTensorUniform(tensorData[i], low, high);
+
+	}
+
+	agentModelVariables[id] = tensorData;
+}
+
+void NNAgentModelManager::registerNewSpiece(SpecieID id, size_t inputUse, size_t hiddenUse, float low, float high) {
+
+	if (!hasVariables) return;
+
+	Tensor* tensorData = getVariableSet();
+
+	for (size_t i = 0; i < variableCount; i++) {
+
+		Tensor sliced;
+
+		if (i < variableCount - outputParamCount) {
+			sliced = tensorData[i].slice(0, hiddenUse);
+			tensorData[i].slice(hiddenUse, tensorData[i].size.last()).initZero();
+		}
+		else {
+			sliced = tensorData[i];
+		}
+
+		if (i == 0) {
+			Tensor subSlice;
+			for (size_t j = 0; j < sliced.size.getDimSize(1); j++) {
+				subSlice = sliced.slice(j, j + 1).squeeze().slice(0, inputUse);
+				sliced.slice(inputUse, sliced.size.last()).initZero();
+				curandManager.randomizeTensorUniform(subSlice, low, high);
+			}
+		}
+		else {
+			curandManager.randomizeTensorUniform(sliced, low, high);
+		}
 
 	}
 

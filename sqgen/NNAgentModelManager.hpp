@@ -7,6 +7,15 @@
 #include "../ha_models/ReferenceMappedTensor.hpp"
 #include "../ha_models/TensorMemAllocator.hpp"
 
+struct MutationCfg {
+	float nonZeroProb;
+	float nonZeroLow;
+	float nonZeroHigh;
+	float zeroProb;
+	float zeroHigh;
+	float zeroLow;
+};
+
 struct NNAgentModelManager {
 private:
 
@@ -16,6 +25,8 @@ private:
 	size_t poolSize = 0;
 	size_t variableCount = 0;
 	size_t stateCount = 0;
+
+	size_t outputParamCount = 0;
 
 	// Would have used the tensor allocator must is more efficient this way
 
@@ -47,8 +58,9 @@ public:
 	Tensor predict(Tensor& input);
 
 	void eraseSpecie(SpecieID id);
-	void registerSpecie(SpecieID parent, SpecieID id, float prob, float low, float high);
+	void registerSpecie(SpecieID parent, SpecieID id, float prob, float low, float high, float zprob);
 	void registerNewSpiece(SpecieID id, float low, float high);
+	void registerNewSpiece(SpecieID id, size_t inputUse, size_t hiddenUse, float low, float high);
 
 	void eraseAgent(AgentID id);
 	void registerAgent(AgentID id);

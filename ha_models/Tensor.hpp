@@ -65,6 +65,8 @@ public:
 	*/
 	Tensor slice(size_t begin, size_t end);
 
+	Tensor squeeze();
+
 	void copyTo(Tensor& t);
 
 	/*

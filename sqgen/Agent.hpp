@@ -17,4 +17,6 @@ struct Agent {
 	// Pos
 	Position pos;
 
+	size_t generation = 0;
+
 };

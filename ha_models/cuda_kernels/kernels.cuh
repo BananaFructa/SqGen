@@ -76,7 +76,7 @@ namespace CudaKernels {
 	// curand
 	void curandStateAlloc(curandState_t* state, size_t size, unsigned long seed);
 	void randomizeTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float lowerRange, float higherRange);
-	void rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange);
+	void rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float lowerRange, float higherRange, float zprob);
 
 }
 
