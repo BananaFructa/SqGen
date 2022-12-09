@@ -7,7 +7,7 @@
 #include "RndPosGenerator.h"
 #include "Constant.h"
 #include "Agent.hpp"
-#include "Position.h"
+#include "Position.hpp"
 #include "NNAgentModelManager.hpp"
 #include "../ha_models/ReferenceMappedTensor.hpp"
 #include "../ha_models/TensorMemAllocator.hpp"

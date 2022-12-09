@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Position.h"
+#include "Position.hpp"
 
 #define NULL_ID 0
 

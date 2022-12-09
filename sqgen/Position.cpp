@@ -1,4 +1,4 @@
-#include "Position.h"
+#include "Position.hpp"
 
 Position Position::left = Position(-1, 0);
 Position Position::right = Position(1, 0);

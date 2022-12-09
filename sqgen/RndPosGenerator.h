@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <algorithm>
-#include "Position.h"
+#include "Position.hpp"
 
 struct RndPosGenerator {
 
