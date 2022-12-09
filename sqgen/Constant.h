@@ -3,7 +3,7 @@ namespace Constants {
 
 	// ========== MEMORY AND PROCESS MANAGMENT CONSTANTS ===========
 
-	const size_t nnPoolSize = 100'000'00;
+	const size_t nnPoolSize = 100'000;
 	const size_t curandPoolSize = 1000;
 	const unsigned long seed = 123;
 
@@ -34,4 +34,11 @@ namespace Constants {
 		
 	const float AP_MutationAmplitude = 0;
 	const float SIE_MutatuinAmplitude = 0;
+
+	const float initialFood = 0;
+
+	const float moveEnergyCost = 0;
+	const float multiplyEnergyCost = 0;
+	const float attackEnergyCost = 0;
+	const float attackEnergyGain = 0;
 }

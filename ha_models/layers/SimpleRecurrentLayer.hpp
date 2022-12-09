@@ -5,7 +5,7 @@
 class SimpleRecurrentLayer : public Layer {
 private:
 
-	size_t lastSize;
+	size_t lastSize = 0;
 
 	Tensor weightsInput;
 

@@ -197,7 +197,7 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, size_t inputUse, size_t
 			sliced = tensorData[i];
 		}
 
-		if (i == 0) {
+		if (i == 0) { // The input weight tensor is always the first parameter which needs special care
 			Tensor subSlice;
 			for (size_t j = 0; j < sliced.size.getDimSize(1); j++) {
 				subSlice = sliced.slice(j, j + 1).squeeze().slice(0, inputUse);

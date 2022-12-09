@@ -66,7 +66,6 @@
 
 struct Simulation {
 private:
-public:
 //  =======================================================================
 
 	RndPosGenerator randomPositionGenerator;
@@ -86,10 +85,20 @@ public:
 	void buildSIE(NNModel& model);
 	void buildAP(NNModel& model);
 
+	Tensor AP_InputPool = Tensor(Size(3, 1, 8, Constants::nnPoolSize));
+	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize));
+
+	float* decisionOutput = new float[6 * Constants::nnPoolSize];
+
 //  =======================================================================
 
+	float* foodMap = new float[Constants::totalMapSize];
 	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
+
+	float* signalMap = new float[Constants::totalMapSize];
 	Tensor gpuSignalMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
+
+	SpecieID* specieMap = new SpecieID[Constants::totalMapSize];
 	ReferenceMappedTensor gpuSpecieSignalMap = ReferenceMappedTensor(Size(2, Constants::spicieSignalCount, Constants::totalMapSize));
 
 	std::map<SpecieID, Tensor> specieSignalDict;
@@ -98,8 +107,8 @@ public:
 
 //  =======================================================================
 
-	SpecieID specieCounter = 0;
-	AgentID lastAgentID = 0;
+	SpecieID specieCounter = 1;
+	AgentID lastAgentID = 1;
 	std::vector<AgentID> avalabileAgentIDs;
 	std::map<SpecieID, size_t> specieInstaceCounter;
 
@@ -115,11 +124,14 @@ public:
 	void addAgent(Agent parent);
 	void removeAgent(size_t index);
 
-	void update();
+	void gpuCompile();
 
+	void moveAgent(Agent& agent, Position delta);
 	bool positionOccupied(Position pos);
 
 	AgentID getAgentID();
 	SpecieID getSpecieID();
+
+	void update();
 
 };
