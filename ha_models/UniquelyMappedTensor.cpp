@@ -1,32 +1,36 @@
 #include "UniquelyMappedTensor.hpp"
 
+
 UniquelyMappedTensor::UniquelyMappedTensor() : Tensor() {
 }
+
 
 UniquelyMappedTensor::UniquelyMappedTensor(Size size) {
 	init(size);
 }
 
+
 void UniquelyMappedTensor::init(Size size) {
-	if (!gpuTensorData) {
+	if (!Tensor::gpuTensorData) {
 		this->size = size;
 		this->mapSize = size.last();
-		this->mapBlockSize = size.size / mapSize;
+		this->mapBlockSize = size.size / Tensor::mapSize;
 		this->mapped = true;
-		AllocRes res = allocateTensor(size.size, mapSize);
-		gpuTensorData = res.data;
-		gpuTensorMap = res.map;
+		AllocRes res = allocateTensor(size.size, Tensor::mapSize);
+		Tensor::gpuTensorData = res.data;
+		Tensor::gpuTensorMap = res.map;
 
-		hostMap = new TENSOR_TYPE * [mapSize];
-		for (int i = 0; i < mapSize; i++) {
-			hostMap[i] = gpuTensorData + i * mapBlockSize;
+		Tensor::hostMap = new TENSOR_TYPE * [Tensor::mapSize];
+		for (int i = 0; i < Tensor::mapSize; i++) {
+			Tensor::hostMap[i] = Tensor::gpuTensorData + i * Tensor::mapBlockSize;
 		}
-		syncMap();
+		Tensor::syncMap();
 	}
 }
 
+
 void UniquelyMappedTensor::swap(size_t a, size_t b) {
-	Tensor_DEVICE temp = hostMap[a];
-	hostMap[a] = hostMap[b];
-	hostMap[b] = temp;
+	Tensor_DEVICE temp = Tensor::hostMap[a];
+	Tensor::hostMap[a] = Tensor::hostMap[b];
+	Tensor::hostMap[b] = temp;
 }

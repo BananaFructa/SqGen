@@ -39,11 +39,13 @@ Simulation::Simulation() {
 		signalMap[i] = 0;
 	}
 	
-	gpuCompile();
+	gpuUploadMaps();
 
 }
 
 void Simulation::addNewAgent() {
+
+	// TODO: Signal initialization
 
 	if (agents.size() == Constants::mapSize) return;
 
@@ -53,7 +55,7 @@ void Simulation::addNewAgent() {
 		pos = randomPositionGenerator.next();
 	} while (positionOccupied(pos));
 
-	AgentID id = getAgentID();
+	AgentResourceID id = getAgentID();
 	SpecieID specieId = getSpecieID();
 	
 	SIE_Manager.registerAgent(id);
@@ -77,19 +79,48 @@ void Simulation::addNewAgent() {
 	specieInstaceCounter[specieId] = 1;
 
 	agents.push_back(newAgent);
+	xPositions.push_back(newAgent.pos.x);
+	yPositions.push_back(newAgent.pos.y);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 
 }
 
-void Simulation::addAgent(Agent parent) {
+bool Simulation::addAgent(Agent parent) {
+
+	// TODO: Signal mutation
 
 	Position pos = parent.lastPos;
 
 	if (positionOccupied(pos)) {
-		// TODO: Maybe do something else ? (copy algorithm from old)
+
+		// Algorithm for random position selection around the parent agent
+
+		bool l = positionOccupied(parent.pos + Position::left);
+		bool r = positionOccupied(parent.pos + Position::right);
+		bool d = positionOccupied(parent.pos + Position::down);
+		bool u = positionOccupied(parent.pos + Position::up);
+
+		unsigned short totalDirs = l + r + d + u;
+
+		if (totalDirs == 0) return false; // No place is avalabile
+
+		bool dirs[4] = { l,r,d,u };
+
+		unsigned short dir = (Random::randomInt() % totalDirs) + 1;
+
+		unsigned short i;
+
+		for (i = 0; dir != 0; i++) {
+			dir -= dirs[i];
+		}
+
+		Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
+
+		pos = parent.pos + deltas[i];
+
 	}
 
-	AgentID id = getAgentID();
+	AgentResourceID id = getAgentID();
 	SpecieID specieId;
 	size_t generation = parent.generation;
 
@@ -130,14 +161,21 @@ void Simulation::addAgent(Agent parent) {
 	Agent newAgent = { specieId,id,pos,pos,generation };
 
 	agents.push_back(newAgent);
+	xPositions.push_back(newAgent.pos.x);
+	yPositions.push_back(newAgent.pos.y);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 
+	return true;
 }
 
 void Simulation::removeAgent(size_t index) {
 	Agent removed = agents[index];
 	agents[index] = agents[agents.size() - 1];
 	agents.pop_back();
+	xPositions[index] = xPositions[xPositions.size() - 1];
+	xPositions.pop_back();
+	yPositions[index] = yPositions[yPositions.size() - 1];
+	yPositions.pop_back();
 
 	SIE_Manager.eraseAgent(removed.id);
 	AP_Manager.eraseAgent(removed.id);
@@ -151,10 +189,10 @@ void Simulation::removeAgent(size_t index) {
 	avalabileAgentIDs.push_back(removed.id);
 }
 
-AgentID Simulation::getAgentID() {
+AgentResourceID Simulation::getAgentID() {
 	if (avalabileAgentIDs.empty()) return lastAgentID++;
 	else {
-		AgentID id = avalabileAgentIDs[avalabileAgentIDs.size() - 1];
+		AgentResourceID id = avalabileAgentIDs[avalabileAgentIDs.size() - 1];
 		avalabileAgentIDs.pop_back();
 		return id;
 	}
@@ -165,14 +203,15 @@ SpecieID Simulation::getSpecieID() {
 }
 
 bool Simulation::positionOccupied(Position pos) {
+	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return specieMap[pos.y + pos.x * Constants::mapSize] != NULL_ID;
 }
 
-void Simulation::gpuCompile() {
+void Simulation::gpuUploadMaps() {
 	gpuFoodMap.setValue((Tensor_HOST)foodMap);
 	gpuSignalMap.setValue((Tensor_HOST)signalMap);
 	for (size_t i = 0; i < Constants::totalMapSize; i++) {
-		gpuSpecieSignalMap.setRef(i, specieSignalDict[specieMap[0]]);
+		gpuSpecieSignalMap.setRef(i, specieSignalDict[specieMap[i]]);
 	}
 	gpuSpecieSignalMap.syncMap();
 	if (agents.size() != 0) { // If there are 0 agents then there is no array
@@ -183,17 +222,36 @@ void Simulation::gpuCompile() {
 	// TODO: SIE to AP input copy kernel
 }
 
-void Simulation::moveAgent(Agent& agent, Position delta) {
-	Position to = agent.pos + delta;
+bool Simulation::moveAgent(size_t index, Position delta) {
+	Position to = agents[index].pos + delta;
 
 	to.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	if (!positionOccupied(to)) {
-		agent.lastPos = agent.pos;
-		agent.pos = to;
+
+		agents[index].lastPos = agents[index].pos;
+		agents[index].pos = to;
+		xPositions[index] = to.x;
+		yPositions[index] = to.y;
+
+		return true;
+	}
+	else {
+		return false;
 	}
 }
 
 void Simulation::update() {
+
+	size_t remaining = agents.size();
+
+	while (remaining > Constants::nnPoolSize) {
+
+		remaining -= Constants::nnPoolSize;
+	}
+	
 	// TODO: AAAAAAAAAAAAAAAAAAAa
+}
+
+void Simulation::processDecision(size_t index, float decision[]) {
 }

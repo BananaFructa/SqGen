@@ -11,6 +11,7 @@
 #include "NNAgentModelManager.hpp"
 #include "../ha_models/ReferenceMappedTensor.hpp"
 #include "../ha_models/TensorMemAllocator.hpp"
+#include "../ha_models/Array.hpp"
 
 /*
 
@@ -85,10 +86,23 @@ private:
 	void buildSIE(NNModel& model);
 	void buildAP(NNModel& model);
 
+	// AP & SIE gpu netowrk input
 	Tensor AP_InputPool = Tensor(Size(3, 1, 8, Constants::nnPoolSize));
 	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize));
 
-	float* decisionOutput = new float[6 * Constants::nnPoolSize];
+	float* decisionOutput = new float[9 * Constants::nnPoolSize];
+
+//  =======================================================================
+
+	std::vector<Agent> agents;
+	
+	// Linearly memeory stored positions for gpu upload
+	// Used for input compiling
+	std::vector<size_t> xPositions;
+	std::vector<size_t> yPositions;
+	Array<size_t> gpuXPositions = Array<size_t>(Constants::nnPoolSize);
+	Array<size_t> gpuYPositions = Array<size_t>(Constants::nnPoolSize);
+
 
 //  =======================================================================
 
@@ -108,30 +122,28 @@ private:
 //  =======================================================================
 
 	SpecieID specieCounter = 1;
-	AgentID lastAgentID = 1;
-	std::vector<AgentID> avalabileAgentIDs;
+	AgentResourceID lastAgentID = 1;
+	std::vector<AgentResourceID> avalabileAgentIDs;
 	std::map<SpecieID, size_t> specieInstaceCounter;
 
 //  =======================================================================
 
 public:
 
-	std::vector<Agent> agents;
-
 	Simulation();
 
 	void addNewAgent();
-	void addAgent(Agent parent);
+	bool addAgent(Agent parent);
 	void removeAgent(size_t index);
 
-	void gpuCompile();
+	void gpuUploadMaps();
 
-	void moveAgent(Agent& agent, Position delta);
+	bool moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);
 
-	AgentID getAgentID();
+	AgentResourceID getAgentID();
 	SpecieID getSpecieID();
 
 	void update();
-
+	void processDecision(size_t index, float decision[]);
 };

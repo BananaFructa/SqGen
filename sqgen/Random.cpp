@@ -9,3 +9,7 @@ void Random::setSeed(unsigned int seed) {
 bool Random::runProbability(float prob) {
     return prob > (float)rand()/(float)RAND_MAX;
 }
+
+int Random::randomInt() {
+    return rand();
+}

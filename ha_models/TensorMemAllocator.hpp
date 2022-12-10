@@ -7,7 +7,7 @@
 #include "../ha_models/Size.h"
 #include "../ha_models/Tensor.hpp"
 
-template<typename T, typename = std::enable_if<std::is_base_of<Tensor, T>::value>>
+template<typename T>
 struct TensorMemAllocator {
 private:
 
@@ -24,7 +24,7 @@ public:
 	T getTensor() {
 		bool reuse = !unusedPool.empty();
 
-		Tensor set;
+		T set;
 
 		if (reuse) {
 			set = unusedPool[unusedPool.size() - 1];

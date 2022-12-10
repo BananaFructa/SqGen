@@ -48,7 +48,7 @@ public:
 	* @brief Gets the value of the tensor and copies it to a CPU side array
 	* @param t = Input CPU side array
 	*/
-	void getValue(Tensor_HOST t); 
+	void getValue(Tensor_HOST t);
 
 	/*
 	* @param pos = The position of the scalar

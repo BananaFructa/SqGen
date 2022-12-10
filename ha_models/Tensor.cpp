@@ -1,6 +1,8 @@
 #include "Tensor.hpp"
 
 // Too many paramters so these are some functions to wrap everything up
+
+
 void callMulKernerl(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 	if (!tt.mapped && !t1.mapped == 1 && !t2.mapped) {
 		CudaKernels::mulTensor2D(
@@ -36,6 +38,7 @@ void callMulKernerl(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 	}
 }
 
+
 void callAddKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 	if (!tt.mapped && !t1.mapped && !t2.mapped) {
 		CudaKernels::addTensor(
@@ -64,6 +67,7 @@ void callAddKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 		);
 	}
 }
+
 
 void callHadmaradKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 	if (!tt.mapped && !t1.mapped && !t2.mapped) {
@@ -94,21 +98,26 @@ void callHadmaradKernel(Tensor& tt, Tensor& t1, Tensor& t2, int operand) {
 	}
 }
 
+
 Tensor Tensor::EmptyTensor = Tensor();
+
 
 Tensor::Tensor() {
 
 }
 
+
 Tensor::Tensor(Size size) {
 	init(size);
 }
+
 
 void Tensor::free() {
 	if (gpuTensorMap) freeCudaMem(gpuTensorMap);
 	else if (gpuTensorData) freeCudaMem(gpuTensorData);
 	if (hostMap) delete[] hostMap;
 }
+
 
 void Tensor::init(Size size) {
 	if (!gpuTensorData) {
@@ -125,17 +134,20 @@ void Tensor::init(Size size) {
 	}
 }
 
+
 void Tensor::setValue(Tensor_HOST t) {
 	for (int i = 0; i < mapSize; i++) {
 		copyTensorFromHost(t + i * mapBlockSize, hostMap[i], mapBlockSize);
 	}
 }
 
+
 void Tensor::getValue(Tensor_HOST t) {
 	for (int i = 0; i < mapSize; i++) {
 		copyTensorFromDevice(t + i * mapBlockSize, hostMap[i], mapBlockSize);
 	}
 }
+
 
 Scalar Tensor::getElementAt(size_t pos,...) {
 
@@ -157,6 +169,7 @@ Scalar Tensor::getElementAt(size_t pos,...) {
 
 	return gpuTensorMap[linearPos / mapBlockSize] + linearPos % mapBlockSize;
 }
+
 
 Tensor Tensor::slice(size_t begin, size_t end) {
 
@@ -196,47 +209,57 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 	return sliced;
 }
 
+
 Tensor Tensor::squeeze() {
 	Tensor squeezed = *this;
 	squeezed.size = size.squeeze();
 	return squeezed;
 }
 
+
 void Tensor::copyTo(Tensor& t) {
 	copyTensorD2D(t.getGpuMapPointer(), gpuTensorMap, mapSize, size.size);
 }
+
 
 Tensor_DEVICE Tensor::getGpuDataPointer() {
 	return gpuTensorData;
 }
 
+
 TensorMap_DEVICE Tensor::getGpuMapPointer() {
 	return gpuTensorMap;
 }
+
 
 void Tensor::initZero() {
 	if (!referenceOnly) CudaKernels::initZeroTensor(gpuTensorData, size.size);
 	else CudaKernels::initZeroTensorMapped(gpuTensorMap, size.size, mapBlockSize, blockAllignOffset);
 }
 
+
 void Tensor::functionPass(Func f) {
 	if (!mapped) CudaKernels::funcPass(gpuTensorData, f, size.size);
 	else CudaKernels::funcPassMapped(gpuTensorMap, mapBlockSize, blockAllignOffset, size.size, f);
 }
+
 
 void Tensor::sumAllElements(Scalar sum) {
 	if (!mapped) CudaKernels::sumTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
 	else CudaKernels::sumTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
 }
 
+
 void Tensor::normalize(Scalar sum) {
 	if (!mapped) CudaKernels::normalizeTensor(gpuTensorData, (Tensor_DEVICE)sum, 1, size.size);
 	else CudaKernels::normalizeTensorMapped(gpuTensorMap, (Tensor_DEVICE)sum, 1, size.size, mapBlockSize, blockAllignOffset);
 }
 
+
 void Tensor::syncMap() {
 	setMap(hostMap);
 }
+
 
 void Tensor::sumAllElementsAcrossDim(Tensor& sums) {
 	size_t last = size.last();
@@ -244,23 +267,28 @@ void Tensor::sumAllElementsAcrossDim(Tensor& sums) {
 	else CudaKernels::sumTensorMapped(gpuTensorMap, sums.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 
+
 void Tensor::normalizeAcrossDim(Tensor& sum) {
 	size_t last = size.last();
 	if (!mapped) CudaKernels::normalizeTensor(gpuTensorData, sum.getGpuDataPointer(), last, size.size / last);
 	else CudaKernels::normalizeTensorMapped(gpuTensorMap, sum.getGpuDataPointer(), last, size.size / last, mapBlockSize, blockAllignOffset);
 }
 
+
 const OperationDetails<Tensor,Tensor> Tensor::operator*(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::MUL2D);
 }
+
 
 const OperationDetails<Tensor, Tensor> Tensor::operator+(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::SUM);
 }
 
+
 const OperationDetails<Tensor, Tensor> Tensor::operator%(Tensor& t) {
 	return OperationDetails<Tensor, Tensor>(*this, t, Op::HADAMARD);
 }
+
 
 void Tensor::operator=(const OperationDetails<Tensor, Tensor>& o) {
 	switch (o.operation) {
@@ -276,6 +304,7 @@ void Tensor::operator=(const OperationDetails<Tensor, Tensor>& o) {
 	}
 }
 
+
 void Tensor::operator+=(const OperationDetails<Tensor, Tensor>& o) {
 	switch (o.operation) {
 		case MUL2D:
@@ -290,6 +319,7 @@ void Tensor::operator+=(const OperationDetails<Tensor, Tensor>& o) {
 	}
 }
 
+
 void Tensor::operator-=(const OperationDetails<Tensor, Tensor>& o) {
 	switch (o.operation) {
 		case MUL2D:
@@ -303,6 +333,7 @@ void Tensor::operator-=(const OperationDetails<Tensor, Tensor>& o) {
 			break;
 	}
 }
+
 
 void Tensor::setMap(TensorMap_HOST m) {
 	copyMapFromHost(m, gpuTensorMap, mapSize);

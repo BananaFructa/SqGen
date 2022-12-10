@@ -22,6 +22,11 @@ typedef TENSOR_TYPE* Scalar;
 typedef TENSOR_TYPE* Tensor_HOST;
 typedef TENSOR_TYPE** TensorMap_HOST;
 
+template<typename T>
+using Array_DEVICE = T*;
+template<typename T>
+using Array_HOST = T*;
+
 enum Func {
 	KERNEL_ReLU,
 	KERNEL_SIGMOID,
@@ -40,6 +45,24 @@ void destroyStream(cudaStream_t* stream);
 
 // Memory managment
 AllocRes allocateTensor(size_t size, size_t mapSize);
+
+template<typename T>
+Array_DEVICE<T> allocateArray(size_t size) {
+	Array_DEVICE<T> arr;
+	cudaMalloc(&arr, size * sizeof(T));
+	return arr;
+}
+
+template<typename T>
+void copyArrayFromHost(Array_HOST<T> h, Array_DEVICE<T> d, size_t size) {
+	cudaMemcpy(d, h, size * sizeof(T), cudaMemcpyHostToDevice);
+}
+
+template<typename T>
+void copyArrayFromDevice(Array_HOST<T> h, Array_DEVICE<T> d, size_t size) {
+	cudaMemcpy(h, d, size * sizeof(T), cudaMemcpyDeviceToHost);
+}
+
 void copyTensorD2D(TensorMap_DEVICE target, TensorMap_DEVICE source, size_t mapSize, size_t tensorSize);
 void copyTensorFromDevice(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);
 void copyTensorFromHost(Tensor_HOST tHost, Tensor_DEVICE t, size_t size);

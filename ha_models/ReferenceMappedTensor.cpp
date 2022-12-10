@@ -1,11 +1,14 @@
 #include "ReferenceMappedTensor.hpp"
 
+
 ReferenceMappedTensor::ReferenceMappedTensor() : Tensor() {
 }
+
 
 ReferenceMappedTensor::ReferenceMappedTensor(Size size) {
 	init(size);
 }
+
 
 void ReferenceMappedTensor::init(Size size) {
 	if (!gpuTensorMap) {
@@ -25,13 +28,16 @@ void ReferenceMappedTensor::init(Size size) {
 	}
 }
 
+
 void ReferenceMappedTensor::setRef(size_t index, Tensor& t) {
 	if (!t.mapped) hostMap[index] = t.getGpuDataPointer();
 }
 
+
 void ReferenceMappedTensor::setRef(size_t index, Scalar s) {
 	hostMap[index] = s;
 }
+
 
 void ReferenceMappedTensor::swap(size_t a, size_t b) {
 	Tensor_DEVICE temp = hostMap[a];

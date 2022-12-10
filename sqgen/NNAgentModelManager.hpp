@@ -36,7 +36,7 @@ private:
 	
 	std::vector<Size> stateSizes;
 	std::vector<Tensor*> preAllocatedStates;
-	std::map<AgentID, Tensor*> agentModelState;
+	std::map<AgentResourceID, Tensor*> agentModelState;
 
 	NNModel supermodel;
 
@@ -62,8 +62,8 @@ public:
 	void registerNewSpiece(SpecieID id, float low, float high);
 	void registerNewSpiece(SpecieID id, size_t inputUse, size_t hiddenUse, float low, float high);
 
-	void eraseAgent(AgentID id);
-	void registerAgent(AgentID id);
+	void eraseAgent(AgentResourceID id);
+	void registerAgent(AgentResourceID id);
 
 	void loadSpiecie(SpecieID id, Tensor values[]);
 	void loadState(Agent id, Tensor states[]);

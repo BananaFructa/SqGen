@@ -215,7 +215,7 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, size_t inputUse, size_t
 
 }
 
-void NNAgentModelManager::eraseAgent(AgentID id) {
+void NNAgentModelManager::eraseAgent(AgentResourceID id) {
 
 	if (!hasStates) return;
 
@@ -224,7 +224,7 @@ void NNAgentModelManager::eraseAgent(AgentID id) {
 
 }
 
-void NNAgentModelManager::registerAgent(AgentID id) {
+void NNAgentModelManager::registerAgent(AgentResourceID id) {
 
 	if (!hasStates) return;
 
