@@ -21,6 +21,6 @@ struct Agent {
 
 	size_t generation = 0;
 
-	float energy = 0;
+	float food = 0;
 
 };

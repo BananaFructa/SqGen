@@ -6,8 +6,8 @@ struct Position {
 	static Position up;
 	static Position down;
 
-	size_t x;
-	size_t y;
+	int x;
+	int y;
 
 	const bool operator==(Position& b) {
 		return this->x == b.x && this->y == b.y;
@@ -21,12 +21,12 @@ struct Position {
 
 	}
 
-	Position(size_t x, size_t y) {
+	Position(int x, int y) {
 		this->x = x;
 		this->y = y;
 	}
 
-	void wrapPositive(size_t xMax, size_t yMax) {
+	void wrapPositive(int xMax, int yMax) {
 		if (x < 0) x += xMax;
 		if (x >= xMax) x -= xMax;
 		if (y < 0) y += yMax;

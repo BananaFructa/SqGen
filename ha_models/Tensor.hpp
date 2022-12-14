@@ -7,6 +7,17 @@
 
 #include <cstdarg>
 
+/*
+*	  +-------+
+	  |		  |
+	  |		  V
+	+---+ | +---+---+---+---+---+ ... +---+---+---+
+	|M_0| | | 0	| 1	| 2	| 3	| 4	|	  |n-3|n-2|n-1|
+	+---+ | +---+---+---+---+---+ ... +---+---+---+
+			
+			|<---------- one block -------------->|
+*/
+
 class Tensor {
 public:
 
@@ -66,6 +77,8 @@ public:
 	Tensor slice(size_t begin, size_t end);
 
 	Tensor squeeze();
+
+	void clamp(TENSOR_TYPE lower, TENSOR_TYPE upper);
 
 	void copyTo(Tensor& t);
 

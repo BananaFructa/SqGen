@@ -2,15 +2,25 @@
 
 #include "../ha_models/layers/DenseLayer.hpp"
 #include "../ha_models/layers/SimpleRecurrentLayer.hpp"
+#include "cuda_kernels/SqGenKernels.cuh"
 
 void Simulation::buildSIE(NNModel& model) {
+	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 15, Activation::TANH));
-	model.addLayer(new DenseLayer(15, 15, Activation::TANH));
-	model.addLayer(new DenseLayer(15, Constants::visualLatentSize, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, Constants::visualLatentSize, Activation::TANH));
+}
+
+void Simulation::buildSG(NNModel& model) {
+	model.disableDefInternalAlloc();
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(20, 4 + 1 + 1 + 1 + 1, Activation::SOFTMAX));
 }
 
 void Simulation::buildAP(NNModel& model) {
+	model.disableDefInternalAlloc();
 	// Simple test arhitecture
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
@@ -19,12 +29,53 @@ void Simulation::buildAP(NNModel& model) {
 
 Simulation::Simulation() {
 
+	// Generate helper gpu map for processing spatial data
+
+	short observeLogic[Constants::agentObserveRangeTotal];
+
+	for (size_t y = 0; y < Constants::agentObserveRange * 2 + 1; y++) {
+		for (size_t x = 0; x < Constants::agentObserveRange * 2 + 1; x++) {
+			if (x < Constants::agentObserveRange && y < Constants::agentObserveRange) {
+				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | UP_SECOND | USE_FIRST | USE_SECOND;
+			}
+			if (x < Constants::agentObserveRange && y > Constants::agentObserveRange) {
+				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | DOWN_SECOND | USE_FIRST | USE_SECOND;
+			}
+			if (x > Constants::agentObserveRange && y < Constants::agentObserveRange) {
+				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = UP_FIRST | RIGHT_SECOND | USE_FIRST | USE_SECOND;
+			}
+			if (x > Constants::agentObserveRange && y > Constants::agentObserveRange) {
+				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = DOWN_FIRST | RIGHT_SECOND | USE_FIRST | USE_SECOND;
+			}
+			if (x == Constants::agentObserveRange) {
+				if (y < Constants::agentObserveRange)
+					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = UP_FIRST | USE_FIRST;
+				if (y > Constants::agentObserveRange)
+					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = DOWN_FIRST | USE_FIRST;
+			}
+			if (y == Constants::agentObserveRange) {
+				if (x < Constants::agentObserveRange)
+					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | USE_FIRST;
+				if (x > Constants::agentObserveRange)
+					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = RIGHT_FIRST | USE_FIRST;
+			}
+			if (x == Constants::agentObserveRange && y == Constants::agentObserveRange)
+				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = 0;
+		}
+	}
+
+	logicMapObserveRange.setValue(observeLogic);
+
+	// =====================================================
+
 	Random::setSeed(Constants::seed);
 
 	buildSIE(SIE_Network);
+	buildSG(SG_Network);
 	buildAP(AP_Netowrk);
 
 	SIE_Manager = NNAgentModelManager(SIE_Network, curandManager);
+	SG_Manager = NNAgentModelManager(SG_Network, curandManager);
 	AP_Manager = NNAgentModelManager(AP_Netowrk, curandManager);
 
 	randomPositionGenerator = RndPosGenerator(Position(0, 0), Position(Constants::mapSize, Constants::mapSize));
@@ -45,9 +96,9 @@ Simulation::Simulation() {
 
 void Simulation::addNewAgent() {
 
-	// TODO: Signal initialization
-
 	if (agents.size() == Constants::mapSize) return;
+
+	// Choose position
 
 	Position pos;
 
@@ -56,38 +107,31 @@ void Simulation::addNewAgent() {
 	} while (positionOccupied(pos));
 
 	AgentResourceID id = getAgentID();
-	SpecieID specieId = getSpecieID();
+	SpecieID specieId = newSpiecie(NULL_ID);
+
+	registerNewSpecieMember(specieId);
+
+	// Register and allocate specie and agent resources
 	
 	SIE_Manager.registerAgent(id);
-	SIE_Manager.registerNewSpiece(
-		specieId,
-		-Constants::SIE_InitAmplitude,
-		Constants::SIE_InitAmplitude
-	);
-
+	SG_Manager.registerAgent(id);
 	AP_Manager.registerAgent(id);
-	AP_Manager.registerNewSpiece(
-		specieId,
-		Constants::AP_InitializedInputs,
-		Constants::AP_InitializedHidden,
-		-Constants::AP_InitAmplitude,
-		Constants::AP_InitAmplitude
-	);
 
-	Agent newAgent = { specieId,id,pos,pos,0 };
+	// Create agent and update all necessart registries
 
-	specieInstaceCounter[specieId] = 1;
+	Agent newAgent = { specieId,id,pos,pos,0,Constants::initialFood };
 
-	agents.push_back(newAgent);
-	xPositions.push_back(newAgent.pos.x);
-	yPositions.push_back(newAgent.pos.y);
-	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
+	agents.push_back(newAgent); // Agent vec
+	xPositions.push_back(newAgent.pos.x); // x vec
+	yPositions.push_back(newAgent.pos.y); // y vec
+	foodLevels.push_back(newAgent.food);
+	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
+
+
 
 }
 
 bool Simulation::addAgent(Agent parent) {
-
-	// TODO: Signal mutation
 
 	Position pos = parent.lastPos;
 
@@ -125,44 +169,27 @@ bool Simulation::addAgent(Agent parent) {
 	size_t generation = parent.generation;
 
 	SIE_Manager.registerAgent(id);
+	SG_Manager.registerAgent(id);
 	AP_Manager.registerAgent(id);
 
 	bool mutate = Random::runProbability(Constants::agentMutationProbability);
 
 	if (mutate) {
-		specieId = getSpecieID();
-
-		SIE_Manager.registerSpecie(
-			parent.specieId,
-			specieId,
-			Constants::SIE_MutationProb,
-			-Constants::SIE_MutatuinAmplitude,
-			Constants::SIE_MutatuinAmplitude,
-			Constants::SIE_ZeroMutationProb
-		);
-
-		AP_Manager.registerSpecie(
-			parent.specieId,
-			specieId,
-			Constants::AP_MutationProb,
-			-Constants::AP_MutationAmplitude,
-			Constants::AP_MutationAmplitude,
-			Constants::AP_ZeroMutationProb
-		);
-		
-		specieInstaceCounter[specieId] = 1;
+		specieId = newSpiecie(parent.specieId);
 		generation++;
 	}
 	else {
 		specieId = parent.specieId;
-		specieInstaceCounter[specieId]++;
 	}
 
-	Agent newAgent = { specieId,id,pos,pos,generation };
+	registerNewSpecieMember(specieId);
+
+	Agent newAgent = { specieId,id,pos,pos,generation,Constants::initialFood };
 
 	agents.push_back(newAgent);
 	xPositions.push_back(newAgent.pos.x);
 	yPositions.push_back(newAgent.pos.y);
+	foodLevels.push_back(newAgent.food);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 
 	return true;
@@ -176,17 +203,118 @@ void Simulation::removeAgent(size_t index) {
 	xPositions.pop_back();
 	yPositions[index] = yPositions[yPositions.size() - 1];
 	yPositions.pop_back();
+	foodLevels[index] = foodLevels[foodLevels.size() - 1];
+	foodLevels.pop_back();
+
+	signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;
+	specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID;
 
 	SIE_Manager.eraseAgent(removed.id);
+	SG_Manager.eraseAgent(removed.id);
 	AP_Manager.eraseAgent(removed.id);
 
-	if (--specieInstaceCounter[removed.specieId] == 0) {
-		SIE_Manager.eraseSpecie(removed.specieId);
-		AP_Manager.eraseSpecie(removed.specieId);
-		specieInstaceCounter.erase(removed.specieId);
-	}
+	eraseSpecieMember(removed.specieId);
 
 	avalabileAgentIDs.push_back(removed.id);
+}
+
+SpecieID Simulation::newSpiecie(size_t parent) {
+	SpecieID id = getSpecieID();
+
+	Tensor specieSignal = specieSignalAllocator.getTensor();
+
+	if (parent == NULL_ID) {
+
+		// SIE init
+		SIE_Manager.registerNewSpiece(
+			id,
+			-Constants::SIE_InitDetails.initAmplitude,
+			Constants::SIE_InitDetails.initAmplitude
+		);
+
+		SG_Manager.registerNewSpiece(
+			id,
+			Constants::SG_InitDetails.initializedInputs,
+			Constants::SG_InitDetails.initializedHidden,
+			-Constants::SG_InitDetails.initAmplitude,
+			Constants::SG_InitDetails.initAmplitude
+		);
+
+		// AP init
+		AP_Manager.registerNewSpiece(
+			id,
+			Constants::AP_InitDetails.initializedInputs,
+			Constants::AP_InitDetails.initializedHidden,
+			-Constants::AP_InitDetails.initAmplitude,
+			Constants::AP_InitDetails.initAmplitude
+		);
+
+		// Specie signal gen
+		curandManager.randomizeTensorUniform(
+			specieSignal,
+			-Constants::specieSignalAmplitude,
+			Constants::specieSignalAmplitude
+		);
+
+	}
+	else {
+		SIE_Manager.registerSpecie(
+			parent,
+			id,
+			Constants::SIE_MutationDetails.mutationProbability,
+			-Constants::SIE_MutationDetails.mutationAmplitude,
+			Constants::SIE_MutationDetails.mutationAmplitude,
+			Constants::SIE_MutationDetails.zeroMutationProbability
+		);
+
+		SG_Manager.registerSpecie(
+			parent,
+			id,
+			Constants::SG_MutationDetails.mutationProbability,
+			-Constants::SG_MutationDetails.mutationAmplitude,
+			Constants::SG_MutationDetails.mutationAmplitude,
+			Constants::SG_MutationDetails.zeroMutationProbability
+		);
+
+		AP_Manager.registerSpecie(
+			parent,
+			id,
+			Constants::AP_MutationDetails.mutationProbability,
+			-Constants::AP_MutationDetails.mutationAmplitude,
+			Constants::AP_MutationDetails.mutationAmplitude,
+			Constants::AP_MutationDetails.zeroMutationProbability
+		);
+
+		specieSignalDict[parent].copyTo(specieSignal);
+		curandManager.rndOffsetTensorUniform(
+			specieSignal,
+			Constants::specieSignalMutationProb,
+			-Constants::specieSignalMutatuionAmplitude,
+			Constants::specieSignalMutatuionAmplitude
+		);
+		gpuSync(); // <- this might be a bad idea
+		specieSignal.clamp(-Constants::specieSignalAmplitude, Constants::specieSignalAmplitude);
+	}
+
+	specieInstaceCounter[id] = 0;
+	specieSignalDict[id] = specieSignal;
+
+	return id;
+}
+
+void Simulation::registerNewSpecieMember(SpecieID specie) {
+	specieInstaceCounter[specie]++;
+}
+
+void Simulation::eraseSpecieMember(SpecieID specie) {
+	if (--specieInstaceCounter[specie] == 0) {
+		SIE_Manager.eraseSpecie(specie);
+		SG_Manager.eraseSpecie(specie);
+		AP_Manager.eraseSpecie(specie);
+		specieInstaceCounter.erase(specie);
+		specieSignalAllocator.freeTensor(specieSignalDict[specie]);
+		specieSignalDict.erase(specie);
+	}
 }
 
 AgentResourceID Simulation::getAgentID() {
@@ -210,29 +338,45 @@ bool Simulation::positionOccupied(Position pos) {
 void Simulation::gpuUploadMaps() {
 	gpuFoodMap.setValue((Tensor_HOST)foodMap);
 	gpuSignalMap.setValue((Tensor_HOST)signalMap);
-	for (size_t i = 0; i < Constants::totalMapSize; i++) {
-		gpuSpecieSignalMap.setRef(i, specieSignalDict[specieMap[i]]);
+	for (size_t x = 0; x < Constants::mapSize; x++) {
+		for (size_t y = 0; y < Constants::mapSize; y++) {
+			gpuSpecieSignalMap.setRef(y + x * Constants::mapSize, specieSignalDict[specieMap[y + x * Constants::mapSize]]);
+		}
 	}
 	gpuSpecieSignalMap.syncMap();
-	if (agents.size() != 0) { // If there are 0 agents then there is no array
-		SIE_Manager.compile(&agents[0], agents.size());
-		AP_Manager.compile(&agents[0], agents.size());
-	}
+	//if (agents.size() != 0) { // If there are 0 agents then there is no array
+	//	// 4 models are needed for each agent as each agent obersves in 
+	//	SIE_Manager.compile(&agents[0], agents.size(), 4);
+	//	SG_Manager.compile(&agents[0], agents.size());
+	//	AP_Manager.compile(&agents[0], agents.size());
+	//}
 	// TODO: input compile and cuda kernels
 	// TODO: SIE to AP input copy kernel
 }
 
+void Simulation::setAgentFood(size_t index, float food) {
+	agents[index].food = food;
+	foodLevels[index] = food;
+}
+
+void Simulation::setAgentPos(size_t index, Position newPos) {
+	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+	agents[index].lastPos = agents[index].pos;
+	agents[index].pos = newPos;
+	xPositions[index] = newPos.x;
+	yPositions[index] = newPos.y;
+	specieMap[newPos.y + newPos.x * Constants::mapSize] = agents[index].specieId;
+}
+
 bool Simulation::moveAgent(size_t index, Position delta) {
+	// Todo: Move signal
 	Position to = agents[index].pos + delta;
 
 	to.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	if (!positionOccupied(to)) {
 
-		agents[index].lastPos = agents[index].pos;
-		agents[index].pos = to;
-		xPositions[index] = to.x;
-		yPositions[index] = to.y;
+		setAgentPos(index, agents[index].pos + delta);
 
 		return true;
 	}
@@ -241,13 +385,74 @@ bool Simulation::moveAgent(size_t index, Position delta) {
 	}
 }
 
+void Simulation::pipelineAndPredict(size_t from, size_t to) {
+	SIE_Manager.compile(&agents[from], to - from, 4);
+	SG_Manager.compile(&agents[from], to - from);
+	AP_Manager.compile(&agents[from], to - from);
+
+	gpuXPositions.slice(0,to - from).setValue(&xPositions[from]);
+	gpuYPositions.slice(0,to - from).setValue(&yPositions[from]);
+	gpuFoodLevels.slice(0, to - from).setValue(&foodLevels[from]);
+
+	SqGenKernels::processSIEInputs(
+		logicMapObserveRange.getGpuPointer(),
+		gpuSpecieSignalMap.getGpuMapPointer(),
+		gpuXPositions.getGpuPointer(),
+		gpuYPositions.getGpuPointer(),
+		SIE_InputPool.getGpuDataPointer(),
+		Constants::agentObserveRange,
+		Constants::mapSize,
+		Constants::spicieSignalCount,
+		to - from
+	);
+
+	gpuSync();
+
+	Tensor slicedSIE_pool = SIE_InputPool.slice(0, (to - from) * 4);
+	Tensor SIE_out = SIE_Manager.predict(slicedSIE_pool);
+
+	// From here nothing is tested
+
+	SqGenKernels::processAPSGInputs(
+		logicMapObserveRange.getGpuPointer(),
+		gpuXPositions.getGpuPointer(),
+		gpuYPositions.getGpuPointer(),
+		SIE_out.getGpuDataPointer(), // already sliced as is outputed from the NN
+		gpuFoodMap.getGpuDataPointer(),
+		gpuFoodLevels.getGpuPointer(),
+		gpuSignalMap.getGpuDataPointer(),
+		APSG_InputPool.getGpuDataPointer(),
+		Constants::agentObserveRange,
+		Constants::mapSize,
+		to - from
+
+	);
+
+	gpuSync();
+
+
+	// Sync and compile AP inputs
+}
+
 void Simulation::update() {
 
+	gpuSync();
+
+	// COMPILE BEGIN
+
+	gpuUploadMaps();
+
 	size_t remaining = agents.size();
+	size_t current = 0;
 
 	while (remaining > Constants::nnPoolSize) {
-
+		pipelineAndPredict(current, current + Constants::nnPoolSize);
 		remaining -= Constants::nnPoolSize;
+		current += Constants::nnPoolSize;
+	}
+
+	if (remaining != 0) {
+		pipelineAndPredict(current, current + remaining);
 	}
 	
 	// TODO: AAAAAAAAAAAAAAAAAAAa

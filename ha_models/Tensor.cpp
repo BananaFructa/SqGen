@@ -136,15 +136,49 @@ void Tensor::init(Size size) {
 
 
 void Tensor::setValue(Tensor_HOST t) {
+	if (mapSize == 1) {
+		copyTensorFromHost(t, hostMap[0] + blockAllignOffset, size.size);
+		return;
+	}
+	size_t accumulator = 0;
 	for (int i = 0; i < mapSize; i++) {
-		copyTensorFromHost(t + i * mapBlockSize, hostMap[i], mapBlockSize);
+		if (i == 0) {
+			copyTensorFromHost(t + accumulator, hostMap[i] + blockAllignOffset, mapBlockSize - blockAllignOffset);
+		}
+		else if (i == mapSize - 1) {
+			size_t endOffset = (size.size + blockAllignOffset) % mapSize;
+			copyTensorFromHost(t + accumulator, hostMap[i], endOffset);
+		}
+		else {
+			copyTensorFromHost(t + accumulator, hostMap[i], mapBlockSize);
+		}
+		if (i == 0) accumulator += blockAllignOffset;
+		else accumulator += mapBlockSize;
 	}
 }
 
+// 
 
 void Tensor::getValue(Tensor_HOST t) {
+	// Quite sure this can be done better but yea...
+	if (mapSize == 1) {
+		copyTensorFromDevice(t, hostMap[0] + blockAllignOffset, size.size);
+		return;
+	}
+	size_t accumulator = 0;
 	for (int i = 0; i < mapSize; i++) {
-		copyTensorFromDevice(t + i * mapBlockSize, hostMap[i], mapBlockSize);
+		if (i == 0) {
+			copyTensorFromDevice(t + accumulator, hostMap[i] + blockAllignOffset, mapBlockSize - blockAllignOffset);
+		}
+		else if (i == mapSize - 1) {
+			size_t endOffset = (size.size + blockAllignOffset) % mapSize;
+			copyTensorFromDevice(t + accumulator, hostMap[i], endOffset);
+		}
+		else {
+			copyTensorFromDevice(t + accumulator, hostMap[i], mapBlockSize);
+		}
+		if (i == 0) accumulator += blockAllignOffset;
+		else accumulator += mapBlockSize;
 	}
 }
 
@@ -188,8 +222,8 @@ Tensor Tensor::slice(size_t begin, size_t end) {
 
 	sliced.mapSize = 1 + endBlockId - beginBlockId;
 
-	if (sliced.mapSize == 1) sliced.mapBlockSize = (end - begin) * subSize;
-	else sliced.mapBlockSize = mapBlockSize;
+	//if (sliced.mapSize == 1) sliced.mapBlockSize = (end - begin) * subSize;
+	/*else*/ sliced.mapBlockSize = mapBlockSize;
 
 	sliced.blockAllignOffset = beginBlockIndex;
 
@@ -221,6 +255,12 @@ void Tensor::copyTo(Tensor& t) {
 	copyTensorD2D(t.getGpuMapPointer(), gpuTensorMap, mapSize, size.size);
 }
 
+void Tensor::clamp(TENSOR_TYPE lower, TENSOR_TYPE upper) {
+
+	if (!referenceOnly) CudaKernels::clampTensor(gpuTensorData, size.size, lower, upper);
+	else CudaKernels::clampTensorMapped(gpuTensorMap, size.size, mapBlockSize, blockAllignOffset, lower, upper);
+
+}
 
 Tensor_DEVICE Tensor::getGpuDataPointer() {
 	return gpuTensorData;

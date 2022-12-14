@@ -21,6 +21,7 @@ public:
 	}
 
 	void init(size_t size) {
+		this->size = size;
 		gpuPointer = allocateArray<T>(size);
 	}
 
@@ -41,6 +42,10 @@ public:
 		sliced.gpuPointer = this->gpuPointer + begin;
 		sliced.size = end - begin;
 		return sliced;
+	}
+
+	Array_DEVICE<T> getGpuPointer() {
+		return gpuPointer;
 	}
 
 };

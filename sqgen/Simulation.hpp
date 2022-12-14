@@ -14,6 +14,29 @@
 #include "../ha_models/Array.hpp"
 
 /*
+	VIEW RANGE:
+
+	# - The agent
+	L/R/U/D = Left/Right/Up/Down
+
+	For a view range of 2
+
+	+---+---+---+---+---+
+	|L U|L U| U |U R|U R|
+	+---+---+---+---+---+
+	|L U|L U| U |U R|U R|
+	+---+---+---+---+---+
+	| L | L | # | R | R |
+	+---+---+---+---+---+
+	|L D|L D| D |D R|D R|
+	+---+---+---+---+---+
+	|L D|L D| D |D R|D R|
+	+---+---+---+---+---+
+
+
+ */
+
+/*
 
 	INPUT LAYER:
 
@@ -62,11 +85,20 @@
 	| 1x Change signal
 	|
 	=
-
+												 +-------------------+					+--------------+
+										  +----> |		  SG		 |---------X------> |			   |
+				+-------------------+	  |	+--> +-------------------+		   |	    |			   |
+		   +--> |		SIE			|-----|	|								   |		|	  SIM	   |
+		   |	+-------------------+	  |	|	 +-------------------+		   |		|			   |
+		   |							  +-|--> |		  AP		 |---------+------> |			   |
+		   |								+--> +-------------------+					+--------------+
+		   |								|												    |
+		   |________________________________|___________________________________________________|
 */
 
 struct Simulation {
 private:
+public:
 //  =======================================================================
 
 	RndPosGenerator randomPositionGenerator;
@@ -75,20 +107,26 @@ private:
 
 	CurandManager curandManager = CurandManager(Constants::curandPoolSize, Constants::seed);
 
-	// Specie Information Encoder
-	NNModel SIE_Network = NNModel(Constants::nnPoolSize);
+	// Specie Information Encoder                         V each agent needs to run their SIE 4 times in 4 directions
+	NNModel SIE_Network = NNModel(Constants::nnPoolSize * 4);
 	NNAgentModelManager SIE_Manager;
+
+	NNModel SG_Network = NNModel(Constants::nnPoolSize);
+	NNAgentModelManager SG_Manager;
 
 	// Action Processing
 	NNModel AP_Netowrk = NNModel(Constants::nnPoolSize);
 	NNAgentModelManager AP_Manager;
 
 	void buildSIE(NNModel& model);
+	void buildSG(NNModel& model);
 	void buildAP(NNModel& model);
 
-	// AP & SIE gpu netowrk input
-	Tensor AP_InputPool = Tensor(Size(3, 1, 8, Constants::nnPoolSize));
-	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize));
+	// AP & SG gpu netowrk input             V 10 inputs             
+	Tensor APSG_InputPool = Tensor(Size(3, 1, 10, Constants::nnPoolSize));
+
+	// LEFT - RIGHT - UP - DOWN												one for each direction V
+	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize * 4));
 
 	float* decisionOutput = new float[9 * Constants::nnPoolSize];
 
@@ -98,25 +136,45 @@ private:
 	
 	// Linearly memeory stored positions for gpu upload
 	// Used for input compiling
-	std::vector<size_t> xPositions;
-	std::vector<size_t> yPositions;
-	Array<size_t> gpuXPositions = Array<size_t>(Constants::nnPoolSize);
-	Array<size_t> gpuYPositions = Array<size_t>(Constants::nnPoolSize);
+	std::vector<int> xPositions;
+	std::vector<int> yPositions;
+	Array<int> gpuXPositions = Array<int>(Constants::nnPoolSize);
+	Array<int> gpuYPositions = Array<int>(Constants::nnPoolSize);
+
+	std::vector<float> foodLevels;
+	Array<float> gpuFoodLevels = Array<float>(Constants::nnPoolSize);
 
 
 //  =======================================================================
 
+	// ======
+	// Used to avoid kernel bracnhes holds
+	// Holds the directions to which the signal from the relative position should be attributed 
+	// Structure of a short from the array 
+	// | rest unused | 1 bit use second | 1 bit use first | 2 bits to indicate the second direction | 2 bits to indicate the direction |
+	Array<short> logicMapObserveRange = Array<short>(Constants::agentObserveRangeTotal);
+	// ======
+
+	// Matrix which contain the food values of each tile
 	float* foodMap = new float[Constants::totalMapSize];
+	// GPU side matrix of the above
 	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
+	// Matrix which contains the signal outputs of the agents
 	float* signalMap = new float[Constants::totalMapSize];
+	// GPU side matrix of the above
 	Tensor gpuSignalMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
+	// Matrix which contains the specie id of each agent
 	SpecieID* specieMap = new SpecieID[Constants::totalMapSize];
+
+	// Matrix which contains a reference to the specie signal set of the agents at each position on the map
 	ReferenceMappedTensor gpuSpecieSignalMap = ReferenceMappedTensor(Size(2, Constants::spicieSignalCount, Constants::totalMapSize));
 
+	// Dictionary of specie ids and their signals
 	std::map<SpecieID, Tensor> specieSignalDict;
 
+	// Allocator for specie signals
 	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(Size(1, Constants::spicieSignalCount)));
 
 //  =======================================================================
@@ -138,12 +196,19 @@ public:
 
 	void gpuUploadMaps();
 
+	void setAgentFood(size_t index, float food);
+	void setAgentPos(size_t index, Position newPos);
 	bool moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);
+
+	SpecieID newSpiecie(size_t parent);
+	void registerNewSpecieMember(SpecieID specie);
+	void eraseSpecieMember(SpecieID specie);
 
 	AgentResourceID getAgentID();
 	SpecieID getSpecieID();
 
+	void pipelineAndPredict(size_t from, size_t to);
 	void update();
 	void processDecision(size_t index, float decision[]);
 };

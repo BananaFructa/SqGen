@@ -96,16 +96,21 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 
 }
 
-void NNAgentModelManager::compile(Agent agents[], size_t agentCount) {
+void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t specieRepeat) {
 
-	for (int i = 0; i < agentCount; i++) {
-		if (hasVariables) {
-			for (int j = 0; j < supermodel.variableCount; j++) {
-				compiledData[j].setRef(i, agentModelVariables[agents[i].specieId][j]);
+	if (hasVariables) {
+		for (size_t i = 0; i < agentCount; i++) {
+			for (size_t r = 0; r < specieRepeat; r++) {
+				for (size_t j = 0; j < supermodel.variableCount; j++) {
+					compiledData[j].setRef(i * specieRepeat + r, agentModelVariables[agents[i].specieId][j]);
+				}
 			}
 		}
-		if (hasStates) {
-			for (int j = 0; j < supermodel.stateCount; j++) {
+	}
+
+	if (hasStates) {
+		for (size_t i = 0; i < agentCount; i++) {
+			for (size_t j = 0; j < supermodel.stateCount; j++) {
 				compiledState[j].setRef(i, agentModelState[agents[i].id][j]);
 			}
 		}
@@ -117,7 +122,7 @@ void NNAgentModelManager::compile(Agent agents[], size_t agentCount) {
 	if (hasVariables) {
 		for (int i = 0; i < supermodel.variableCount; i++) {
 			compiledData[i].syncMap();
-			slicedData[i] = compiledData[i].slice(0, agentCount);
+			slicedData[i] = compiledData[i].slice(0, agentCount * specieRepeat);
 		}
 	}
 

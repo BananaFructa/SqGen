@@ -281,6 +281,21 @@ __global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVIC
 	if (u) t[i] += (curand_uniform(&state[i]) * absoluteDifference + low);
 }
 
+__global__ void clampTensor_kernel(Tensor_DEVICE t, size_t size, float lower, float upper) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = max(lower, min(t[i], upper));
+	}
+}
+
+__global__ void clampTensorMapped_kernel(TensorMap_DEVICE m, size_t elemSize, size_t blockSize, size_t allignOffset, float lower, float upper) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < elemSize) {
+		size_t accessPoint = i + allignOffset;
+		m[accessPoint / blockSize][accessPoint % blockSize] = max(lower, min(m[accessPoint / blockSize][accessPoint % blockSize], upper));
+	}
+}
+
 AllocRes allocateTensor(size_t size,size_t mapSize) {
 	void* tensorData;
 	cudaMalloc(&tensorData, size * sizeof(TENSOR_TYPE) + mapSize * sizeof(TENSOR_TYPE*));
@@ -394,6 +409,22 @@ void CudaKernels::initZeroTensorMapped(TensorMap_DEVICE m, size_t size, size_t b
 	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
 
 	initZeroTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m,size,blockSize_,allignOffset);
+}
+
+void CudaKernels::clampTensor(Tensor_DEVICE t, size_t size, float lower, float upper) {
+	dim3 threadSize(256);
+	dim3 blockSize((size + threadSize.x - 1) / threadSize.x);
+
+	clampTensor_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (t, size, lower, upper);
+}
+
+void CudaKernels::clampTensorMapped(TensorMap_DEVICE m, size_t elemSize, size_t _blockSize, size_t allignOffset, float lower, float upper) {
+
+	dim3 threadSize(256);
+	dim3 blockSize((elemSize + threadSize.x - 1) / threadSize.x);
+
+	clampTensorMapped_kernel <<< blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >>> (m, elemSize, _blockSize, allignOffset, lower, upper);
+
 }
 
 void CudaKernels::normalizeTensor(Tensor_DEVICE t, Tensor_DEVICE sum, size_t poolSize, size_t elemSize) {

@@ -54,7 +54,7 @@ public:
 
 	NNAgentModelManager();
 	NNAgentModelManager(NNModel model,CurandManager curandmanager);
-	void compile(Agent agents[], size_t agentCount);
+	void compile(Agent agents[], size_t agentCount, size_t specieRepeat = 1);
 	Tensor predict(Tensor& input);
 
 	void eraseSpecie(SpecieID id);

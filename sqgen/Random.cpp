@@ -13,3 +13,7 @@ bool Random::runProbability(float prob) {
 int Random::randomInt() {
     return rand();
 }
+
+float Random::randomFloat() {
+    return ((float)rand() / (float)RAND_MAX) * 2 - 1;
+}
