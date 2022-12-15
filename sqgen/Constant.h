@@ -36,8 +36,8 @@ namespace Constants {
 	};
 
 	const NetworkInitDetails SG_InitDetails{
-		0,		// Init Inputs
-		0,		// Init Hidden
+		9,		// Init Inputs
+		20,		// Init Hidden
 		1		// Init Amplitude
 	};	
 
@@ -76,6 +76,8 @@ namespace Constants {
 		0,		// Zero mutation probability
 		0		// Mutation Amplitude
 	};
+
+	const float initialMapFood = 0;
 
 	const float initialFood = 0;
 	const float moveEnergyCost = 0;

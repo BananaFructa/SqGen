@@ -97,8 +97,8 @@ __global__ void processAPSGInputs_kernel(
 		// Similar thing to the SIE kernel but for the normal signal map and no normalization
 		for (size_t i = 0; i < (viewRange * 2 + 1) * (viewRange * 2 + 1); i++) {
 			// first
-			x = cx + i / (viewRange * 2 + 1);
-			y = cy + i % (viewRange * 2 + 1);
+			x = (cx-viewRange) + i / (viewRange * 2 + 1);
+			y = (cy-viewRange) + i % (viewRange * 2 + 1);
 			x = (x + mapSize) % mapSize;
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];

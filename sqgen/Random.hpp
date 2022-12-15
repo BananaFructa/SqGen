@@ -5,5 +5,6 @@ namespace Random {
 	bool runProbability(float prob);
 	int randomInt();
 	float randomFloat();
+	size_t runProbabilityVector(float* vec, size_t size);
 
 }

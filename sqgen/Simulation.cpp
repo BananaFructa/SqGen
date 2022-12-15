@@ -16,7 +16,7 @@ void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 4 + 1 + 1 + 1 + 1, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(20, 1, Activation::TANH));
 }
 
 void Simulation::buildAP(NNModel& model) {
@@ -24,7 +24,7 @@ void Simulation::buildAP(NNModel& model) {
 	// Simple test arhitecture
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 4 + 1 + 1 + 1 + 1, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(20, 9, Activation::SOFTMAX));
 }
 
 Simulation::Simulation() {
@@ -85,7 +85,7 @@ Simulation::Simulation() {
 	specieSignalDict[NULL_ID] = nullSpecieSignal;
 
 	for (size_t i = 0; i < Constants::totalMapSize; i++) {
-		foodMap[i] = Constants::initialFood;
+		foodMap[i] = Constants::initialMapFood;
 		specieMap[i] = NULL_ID;
 		signalMap[i] = 0;
 	}
@@ -385,7 +385,7 @@ bool Simulation::moveAgent(size_t index, Position delta) {
 	}
 }
 
-void Simulation::pipelineAndPredict(size_t from, size_t to) {
+void Simulation::pipelineToAPSG(size_t from, size_t to) {
 	SIE_Manager.compile(&agents[from], to - from, 4);
 	SG_Manager.compile(&agents[from], to - from);
 	AP_Manager.compile(&agents[from], to - from);
@@ -434,6 +434,44 @@ void Simulation::pipelineAndPredict(size_t from, size_t to) {
 	// Sync and compile AP inputs
 }
 
+void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
+	Tensor slicedAPSG = APSG_InputPool.slice(0, to - from);
+
+	Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
+	Tensor decisions = AP_Manager.predict(slicedAPSG);
+
+	decisions.getValue(decisionOutput);
+	generatedSignals.getValue(generatedSignalsOutput);
+
+	for (int i = 0; i < 3; i++) {
+		std::cout << " " << generatedSignalsOutput[i] << " \n";
+	}
+
+	for (size_t i = 0; i < to - from; i++) {
+		switch (Random::runProbabilityVector(&decisionOutput[i * 9], 9)) {
+		case EAT:
+			break;
+		case MULTIPLY:
+			break;
+		case UP:
+			break;
+		case DOWN:
+			break;
+		case LEFT:
+			break;
+		case RIGHT:
+			break;
+		case ATTACK:
+			break;
+		case SHARE:
+			break;
+		case SIGNAL:
+			break;
+		}
+	}
+
+}
+
 void Simulation::update() {
 
 	gpuSync();
@@ -446,13 +484,16 @@ void Simulation::update() {
 	size_t current = 0;
 
 	while (remaining > Constants::nnPoolSize) {
-		pipelineAndPredict(current, current + Constants::nnPoolSize);
+		pipelineToAPSG(current, current + Constants::nnPoolSize);
+		runAPSGAndProcessDecisions(current, current + Constants::nnPoolSize);
 		remaining -= Constants::nnPoolSize;
 		current += Constants::nnPoolSize;
 	}
 
 	if (remaining != 0) {
-		pipelineAndPredict(current, current + remaining);
+		pipelineToAPSG(current, current + remaining);
+		runAPSGAndProcessDecisions(current, current + remaining);
+
 	}
 	
 	// TODO: AAAAAAAAAAAAAAAAAAAa

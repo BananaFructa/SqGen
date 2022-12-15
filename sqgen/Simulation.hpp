@@ -13,6 +13,16 @@
 #include "../ha_models/TensorMemAllocator.hpp"
 #include "../ha_models/Array.hpp"
 
+#define EAT 0
+#define MULTIPLY 1
+#define UP 2
+#define DOWN 3
+#define RIGHT 4
+#define LEFT 5
+#define ATTACK 6
+#define SHARE 7
+#define SIGNAL 8
+
 /*
 	VIEW RANGE:
 
@@ -128,6 +138,7 @@ public:
 	// LEFT - RIGHT - UP - DOWN												one for each direction V
 	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize * 4));
 
+	float* generatedSignalsOutput = new float[Constants::nnPoolSize];
 	float* decisionOutput = new float[9 * Constants::nnPoolSize];
 
 //  =======================================================================
@@ -208,7 +219,8 @@ public:
 	AgentResourceID getAgentID();
 	SpecieID getSpecieID();
 
-	void pipelineAndPredict(size_t from, size_t to);
+	void pipelineToAPSG(size_t from, size_t to);
+	void runAPSGAndProcessDecisions(size_t from, size_t to);
 	void update();
 	void processDecision(size_t index, float decision[]);
 };
