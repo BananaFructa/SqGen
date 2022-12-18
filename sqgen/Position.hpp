@@ -17,6 +17,10 @@ struct Position {
 		return Position(this->x + b.x, this->y + b.y);
 	}
 
+	const Position operator*(int s) {
+		return Position(this->x * s, this->y * s);
+	}
+
 	Position() {
 
 	}

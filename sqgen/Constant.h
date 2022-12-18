@@ -52,8 +52,8 @@ namespace Constants {
 	const size_t mapSize = 50;
 	const size_t totalMapSize = mapSize * mapSize;
 
-	const size_t agentObserveRange = 2;
-	const size_t agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
+	const int agentObserveRange = 2;
+	const int agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
 	const float specieSignalMutationProb = 0;
 	const float specieSignalMutatuionAmplitude = 0;
 
@@ -77,11 +77,16 @@ namespace Constants {
 		0		// Mutation Amplitude
 	};
 
-	const float initialMapFood = 0;
+	const float initialMapFood = 1;
 
+	const float maximumFood = 0;
 	const float initialFood = 0;
+	const float eatAmount = 0;
 	const float moveEnergyCost = 0;
 	const float multiplyEnergyCost = 0;
 	const float attackEnergyCost = 0;
 	const float attackEnergyGain = 0;
+
+	const float shareEnergyTransfer = 0;
+	const int shareRadius = 0;
 }

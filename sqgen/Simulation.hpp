@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <map>
+#include <mutex>
 
 #include "Random.hpp"
 #include "RndPosGenerator.h"
@@ -107,7 +108,6 @@
 */
 
 struct Simulation {
-private:
 public:
 //  =======================================================================
 
@@ -144,6 +144,7 @@ public:
 //  =======================================================================
 
 	std::vector<Agent> agents;
+	std::vector<size_t> removePendingList;
 	
 	// Linearly memeory stored positions for gpu upload
 	// Used for input compiling
@@ -197,19 +198,29 @@ public:
 
 //  =======================================================================
 
+	Position dirs[4] = { Position::left, Position::right, Position::up, Position::down };
+
 public:
 
+	std::mutex updateLock;
+
 	Simulation();
+
+	void gpuUploadMaps();
+
+	size_t getAgentAt(Position pos);
 
 	void addNewAgent();
 	bool addAgent(Agent parent);
 	void removeAgent(size_t index);
+	void processRemoveRequests();
 
-	void gpuUploadMaps();
-
-	void setAgentFood(size_t index, float food);
+	void eat(size_t index);
+	void attack(size_t index);
+	void share(size_t index);
+	bool addToAgentFood(size_t index, float food);
 	void setAgentPos(size_t index, Position newPos);
-	bool moveAgent(size_t index, Position delta);
+	void moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);
 
 	SpecieID newSpiecie(size_t parent);
@@ -222,5 +233,7 @@ public:
 	void pipelineToAPSG(size_t from, size_t to);
 	void runAPSGAndProcessDecisions(size_t from, size_t to);
 	void update();
-	void processDecision(size_t index, float decision[]);
+
+	float* getFoodMap();
+	float* getSignalMap();
 };

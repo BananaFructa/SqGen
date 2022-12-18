@@ -1,24 +1,21 @@
 #include <iostream>
 
 #include "sqgen/Simulation.hpp"
+#include "sqgen/graphics/RenderManager.hpp"
 
 // 16.11.2022
 
+// TODO: graphical interface
+
 int main() {
+
 
 	Simulation simulation;
 
-	simulation.addNewAgent();
-	simulation.addNewAgent();
-	simulation.addNewAgent();
+	RenderManager renderMananger(simulation);
 
-	simulation.setAgentPos(0, Position(5, 5));
-	simulation.setAgentPos(1, Position(5, 4));
-	simulation.setAgentPos(2, Position(4, 4));
+	renderMananger.RenderLoop();
 
-	simulation.signalMap[4 + 6 * Constants::mapSize] = 1;
-
-	simulation.update();
 
 	return 0;
 }
