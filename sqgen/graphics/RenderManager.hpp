@@ -6,6 +6,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <mutex>
+#include <map>
 #include "../Simulation.hpp"
 #include "RenderUtils.hpp"
 
@@ -52,13 +53,19 @@ class RenderManager {
 
 private:
 
+	sf::Texture cursor;
+	sf::Sprite cursorSprite;
+
+	sf::Vector2i cursorPos = sf::Vector2i(0,0);
+
+	std::map<SpecieID, sf::Color> colorPalette;
+
 	sf::Vector2f LastCameraPosition = sf::Vector2f(0, 0);
 	int XUnitsInFrame;
 	int YUnitsInFrame;
 	void FOVChanged();
 	int AreaInFrame;
 	bool SignalMapMode;
-	bool AttackMapMode;
 
 
 public:
@@ -77,6 +84,5 @@ public:
 	void updateRenderData();
 	void RenderLoop();
 	void RunEvent(sf::Event Event);
-	void UpdateFoodMapColors();
 
 };

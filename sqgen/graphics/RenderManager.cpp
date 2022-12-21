@@ -3,14 +3,28 @@
 #include "RenderUtils.hpp"
 
 void RenderManager::updateRenderData() {
+
     float* foodMap = SimulationToRender.getFoodMap();
     float* signalMap = SimulationToRender.getSignalMap();
+    SpecieID* specieMap = SimulationToRender.getSpecieMap();
 
     sf::VertexArray& backFood = buffer.getBackFoodMap();
     sf::VertexArray& backAgent = buffer.getBackAgentMap();
 
     for (int i = 0; i < Constants::mapSize; ++i) {
         for (int j = 0; j < Constants::mapSize; ++j) {
+
+            {
+                SpecieID id = specieMap[j + i * Constants::mapSize];
+                sf::Color color;
+                if (id != 0 && !colorPalette.count(id)) {
+                    SpecieID parent = SimulationToRender.getParentSpecie(id);
+                    if (parent == NULL_ID) color = randomAgentColor();
+                    else color = mutateColor(colorPalette[parent]);
+                    colorPalette[id] = color;
+                }
+            }
+
             float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood;
             sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
             backFood[(j + i * Constants::mapSize) * 4].color = Color;
@@ -20,7 +34,33 @@ void RenderManager::updateRenderData() {
         }
     }
 
-    // Draw agents and create coloring system
+    if (!SignalMapMode) {
+        for (int x = 0; x < Constants::mapSize; x++) {
+            for (int y = 0; y < Constants::mapSize; y++) {
+                SpecieID id = specieMap[y + x * Constants::mapSize];
+                sf::Color color = colorPalette[id];
+
+                backAgent[(y + x * Constants::mapSize) * 4].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
+            }
+        }
+    }
+    else {
+        for (int x = 0; x < Constants::mapSize; x++) {
+            for (int y = 0; y < Constants::mapSize; y++) {
+                float s = signalMap[y + x * Constants::mapSize];
+                float factor = (s + 1) / 2;
+                sf::Color color((1-factor)*255, 0, factor * 255);
+
+                backAgent[(y + x * Constants::mapSize) * 4].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
+                backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
+            }
+        }
+    }
 
     buffer.swap();
 
@@ -31,14 +71,17 @@ void RenderManager::FOVChanged() {
     YUnitsInFrame = YUnitsCount(Window, FieldOfView);
 }
 
-RenderManager::RenderManager(Simulation& sim) : SimulationToRender(sim), Window(sf::VideoMode(800, 800), "test") {
+RenderManager::RenderManager(Simulation& sim) : SimulationToRender(sim), Window(sf::VideoMode(800, 800), "SqGen") {
+    cursor.loadFromFile("tex/curs.png");
+    cursorSprite.setTexture(cursor);
+    cursorSprite.scale(sf::Vector2f(1.0f / 30, 1.0f / 30));
     updateRenderData();
+    colorPalette[NULL_ID] = sf::Color::Transparent;
 }
 
 void RenderManager::RenderLoop() {
 
     FOVChanged();
-    UpdateFoodMapColors();
 
     Window.setFramerateLimit(30);
 
@@ -70,7 +113,7 @@ void RenderManager::RenderLoop() {
         NormalizeViewport(Window, FieldOfView, CameraPosition);
 
         Window.draw(buffer.getFrontFoodMap());
-       // Window.draw(buffer.getFrontAgentMap());
+        Window.draw(buffer.getFrontAgentMap());
 
         NormalizeViewport(Window, FieldOfView, sf::Vector2f(Fract(CameraPosition.x), Fract(CameraPosition.y)));
 
@@ -78,6 +121,9 @@ void RenderManager::RenderLoop() {
 
         if (IsGridDisplayed)
             DrawGrid(Window, FieldOfView);
+
+        cursorSprite.setPosition((sf::Vector2f)cursorPos - sf::Vector2f(50.05,50.05) - CameraPosition);
+        Window.draw(cursorSprite);
 
         Window.display();
     }
@@ -93,25 +139,15 @@ void RenderManager::RunEvent(sf::Event Event) {
         FOVChanged();
     }
 
-    if (Event.type == sf::Event::KeyPressed) {
-        if (Event.key.code == sf::Keyboard::P) SignalMapMode = !SignalMapMode;
-        if (Event.key.code == sf::Keyboard::O) AttackMapMode = !AttackMapMode;
+    if (Event.type == sf::Event::MouseButtonPressed) {
+        sf::Vector2i pixelPos = sf::Mouse::getPosition(Window);
+        sf::Vector2f worldPos = Window.mapPixelToCoords(pixelPos) + CameraPosition;
+
+        cursorPos = sf::Vector2i((int)(worldPos.x + 50), (int)(worldPos.y + 50));
     }
-}
 
-void RenderManager::UpdateFoodMapColors() {
-
-    /*int index = 0;
-    for (int i = 0; i < SimulationToRender->MapSize; ++i) {
-        for (int j = 0; j < SimulationToRender->MapSize; ++j) {
-            float factor = (float)((SimulationToRender->Map[i][j].Energy) / (float)Constants::MAX_ENERGY_IN_GENERATED_TILE);
-            sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
-            float x = i - SimulationToRender->MapSize / 2;
-            float y = j - SimulationToRender->MapSize / 2;
-            FoodMapArray[index++].color = Color;
-            FoodMapArray[index++].color = Color;
-            FoodMapArray[index++].color = Color;
-            FoodMapArray[index++].color = Color;
-        }
-    }*/
+    if (Event.type == sf::Event::KeyPressed) {
+        if (Event.key.code == sf::Keyboard::O) SignalMapMode = !SignalMapMode;
+        if (Event.key.code == sf::Keyboard::P) SimulationToRender.togglePause();
+    }
 }

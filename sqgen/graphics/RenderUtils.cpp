@@ -1,6 +1,7 @@
 #include "SFML/Graphics.hpp"
 #include "RenderUtils.hpp"
 #include "../Constant.h"
+#include "../Random.hpp"
 
 void NormalizeViewport(sf::RenderWindow& Window, float fov, sf::Vector2f CameraPosition) {
     sf::Vector2f WindowResolution = sf::Vector2f((float)Window.getSize().x, (float)Window.getSize().y);
@@ -76,4 +77,29 @@ void genVertexArray(sf::VertexArray& arr) {
             arr[index++] = sf::Vector2f(x, y + 1);
         }
     }
+}
+
+sf::Color randomAgentColor() {
+    return sf::Color(Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60);
+}
+
+const int colorChangeAmplitude = 51;
+
+int mutateChannel(int c) {
+    if (c >= 255 - (colorChangeAmplitude - 1) / 2) {
+        c -= Random::randomInt() % colorChangeAmplitude;
+    }
+    else if (c <= 60 + (colorChangeAmplitude - 1) / 2) {
+        c += Random::randomInt() % colorChangeAmplitude;
+    }
+    else {
+        c += Random::randomInt() % colorChangeAmplitude - (colorChangeAmplitude-1)/2;
+    }
+    return c;
+}
+
+sf::Color mutateColor(sf::Color color) {
+
+    return sf::Color(mutateChannel(color.r),mutateChannel(color.g),mutateChannel(color.b));
+
 }

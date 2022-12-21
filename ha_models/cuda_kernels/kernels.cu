@@ -8,6 +8,16 @@
 
 cudaStream_t *currentStream = NULL;
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort = true)
+{
+	if (code != cudaSuccess)
+	{
+		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		if (abort) __debugbreak();
+	}
+}
+
 __global__ void initZeroTensor_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
@@ -463,6 +473,8 @@ void CudaKernels::mulTensor2D(Tensor_DEVICE tTarget,Tensor_DEVICE tSource1, Tens
 	dim3 blockSize((processCountPerTensor * MAX(poolSize1,poolSize2) + threadSize.x - 1) / threadSize.x);
 	
 	mulTensor_kernel <<< blockSize,threadSize,0,(currentStream ? *currentStream : 0) >>> (tTarget, tSource1, tSource2, poolSize1,poolSize2,processCountPerTensor, l, cl, c,operand);
+
+	gpuSync(); // REMOVE
 }
 
 void CudaKernels::mulTensorMapped2D(TensorMap_DEVICE tTarget, TensorMap_DEVICE tSource1, TensorMap_DEVICE tSource2, size_t poolSize1, size_t poolSize2, size_t l, size_t cl, size_t c, size_t blockSizeT, size_t blockSize1, size_t blockSize2, size_t allignOffsetT, size_t allignOffset1, size_t allignOffset2, int operand) {
@@ -472,6 +484,8 @@ void CudaKernels::mulTensorMapped2D(TensorMap_DEVICE tTarget, TensorMap_DEVICE t
 	dim3 blockSize((processCountPerTensor * MAX(poolSize1, poolSize2) + threadSize.x - 1) / threadSize.x);
 
 	mulTensorMapped_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> >  (tTarget, tSource1, tSource2, poolSize1, poolSize2, processCountPerTensor, l, cl, c, blockSizeT, blockSize1, blockSize2,allignOffsetT,allignOffset1,allignOffset2, operand);
+
+	gpuSync(); // REMOVE
 }
 
 void CudaKernels::curandStateAlloc(curandState_t* state, size_t size, unsigned long seed) {
@@ -498,6 +512,7 @@ void CudaKernels::rndOffsetTensorUniform(curandState_t* state, Tensor_DEVICE t, 
 
 void gpuSync() {
 	cudaDeviceSynchronize();
+	gpuErrchk(cudaPeekAtLastError());
 }
 
 void gpuSyncStream(cudaStream_t* stream) {

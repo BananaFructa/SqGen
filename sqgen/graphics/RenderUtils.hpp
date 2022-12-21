@@ -17,3 +17,7 @@ float Clamp(float v, float l, float h);
 void DrawGrid(sf::RenderWindow& Window, float fov);
 
 void genVertexArray(sf::VertexArray& arr);
+
+sf::Color randomAgentColor();
+
+sf::Color mutateColor(sf::Color color);

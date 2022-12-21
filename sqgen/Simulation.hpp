@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <chrono>
 
 #include "Random.hpp"
 #include "RndPosGenerator.h"
@@ -13,6 +14,7 @@
 #include "../ha_models/ReferenceMappedTensor.hpp"
 #include "../ha_models/TensorMemAllocator.hpp"
 #include "../ha_models/Array.hpp"
+#include "Profiler.hpp"
 
 #define EAT 0
 #define MULTIPLY 1
@@ -179,12 +181,15 @@ public:
 
 	// Matrix which contains the specie id of each agent
 	SpecieID* specieMap = new SpecieID[Constants::totalMapSize];
+	size_t* indexMap = new size_t[Constants::totalMapSize];
 
 	// Matrix which contains a reference to the specie signal set of the agents at each position on the map
 	ReferenceMappedTensor gpuSpecieSignalMap = ReferenceMappedTensor(Size(2, Constants::spicieSignalCount, Constants::totalMapSize));
 
 	// Dictionary of specie ids and their signals
 	std::map<SpecieID, Tensor> specieSignalDict;
+
+	std::map<SpecieID, SpecieID> specieConrelationMap;
 
 	// Allocator for specie signals
 	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(Size(1, Constants::spicieSignalCount)));
@@ -200,9 +205,11 @@ public:
 
 	Position dirs[4] = { Position::left, Position::right, Position::up, Position::down };
 
-public:
+	Profiler profiler;
 
-	std::mutex updateLock;
+	bool paused = false;
+
+public:
 
 	Simulation();
 
@@ -226,6 +233,7 @@ public:
 	SpecieID newSpiecie(size_t parent);
 	void registerNewSpecieMember(SpecieID specie);
 	void eraseSpecieMember(SpecieID specie);
+	SpecieID getParentSpecie(SpecieID child);
 
 	AgentResourceID getAgentID();
 	SpecieID getSpecieID();
@@ -236,4 +244,11 @@ public:
 
 	float* getFoodMap();
 	float* getSignalMap();
+	SpecieID* getSpecieMap();
+
+	std::vector<Agent>& getAgents();
+
+	void printProfilerInfo();
+
+	void togglePause();
 };

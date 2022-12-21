@@ -30,14 +30,14 @@ namespace Constants {
 	const size_t visualLatentSize = 1;
 
 	const NetworkInitDetails AP_InitDetails = {
-		3,		// Init Inputs
-		2,		// Init Hidden
+		10,		// Init Inputs
+		20,		// Init Hidden
 		1.0f	// Init Amplitude
 	};
 
 	const NetworkInitDetails SG_InitDetails{
 		9,		// Init Inputs
-		20,		// Init Hidden
+		5,		// Init Hidden
 		1		// Init Amplitude
 	};	
 
@@ -49,7 +49,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	const size_t mapSize = 50;
+	const size_t mapSize = 200;
 	const size_t totalMapSize = mapSize * mapSize;
 
 	const int agentObserveRange = 2;
@@ -57,7 +57,7 @@ namespace Constants {
 	const float specieSignalMutationProb = 0;
 	const float specieSignalMutatuionAmplitude = 0;
 
-	const float agentMutationProbability = 0;
+	const float agentMutationProbability = 1;
 
 	const NetworkMutationDetails AP_MutationDetails = {
 		0,		// Non-zero mutation probability
@@ -79,8 +79,8 @@ namespace Constants {
 
 	const float initialMapFood = 1;
 
-	const float maximumFood = 0;
-	const float initialFood = 0;
+	const float maximumFood = 30;
+	const float initialFood = 10;
 	const float eatAmount = 0;
 	const float moveEnergyCost = 0;
 	const float multiplyEnergyCost = 0;

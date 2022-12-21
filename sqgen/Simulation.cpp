@@ -6,26 +6,34 @@
 
 #include <algorithm>
 
+#define COMPILE_ROUTINE 0
+#define SIE_INPUT_ROUTINE 1
+#define APSG_INPUT_ROUTINE 2
+#define SIE_PREDICT_ROUTINE 3
+#define AP_PREDICT_ROUTINE 4
+#define SG_PREDICT_ROUTINE 5
+#define DECISION_PROCESS_ROUTINE 6
+
 void Simulation::buildSIE(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, Constants::visualLatentSize, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 20, Activation::TANH));
+	model.addLayer(new DenseLayer(20, 20, Activation::TANH));
+	model.addLayer(new DenseLayer(20, Constants::visualLatentSize, Activation::TANH));
 }
 
 void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 1, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(5, 5, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(5, 1, Activation::TANH));
 }
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
+	model.addLayer(new SimpleRecurrentLayer(20, 20, Activation::SIGMOID, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(20, 9, Activation::SOFTMAX));
 }
 
@@ -89,6 +97,7 @@ Simulation::Simulation() {
 	for (size_t i = 0; i < Constants::totalMapSize; i++) {
 		foodMap[i] = Constants::initialMapFood;
 		specieMap[i] = NULL_ID;
+		indexMap[i] = 0;
 		signalMap[i] = 0;
 	}
 	
@@ -97,11 +106,7 @@ Simulation::Simulation() {
 }
 
 size_t Simulation::getAgentAt(Position pos) {
-	for (size_t i = 0; i < agents.size(); i++) {
-		if (agents[i].pos == pos) {
-			return i;
-		}
-	}
+	return indexMap[pos.y + pos.x * Constants::mapSize];
 }
 
 void Simulation::addNewAgent() {
@@ -136,8 +141,7 @@ void Simulation::addNewAgent() {
 	yPositions.push_back(newAgent.pos.y); // y vec
 	foodLevels.push_back(newAgent.food);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
-
-
+	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
 }
 
@@ -149,16 +153,18 @@ bool Simulation::addAgent(Agent parent) {
 
 		// Algorithm for random position selection around the parent agent
 
-		bool l = positionOccupied(parent.pos + Position::left);
-		bool r = positionOccupied(parent.pos + Position::right);
-		bool d = positionOccupied(parent.pos + Position::down);
-		bool u = positionOccupied(parent.pos + Position::up);
+		bool l = !positionOccupied(parent.pos + Position::left);
+		bool r = !positionOccupied(parent.pos + Position::right);
+		bool d = !positionOccupied(parent.pos + Position::down);
+		bool u = !positionOccupied(parent.pos + Position::up);
 
 		unsigned short totalDirs = l + r + d + u;
 
-		if (totalDirs == 0) return false; // No place is avalabile
+		if (totalDirs == 0) {
+			return false;
+		}// No place is avalabile
 
-		bool dirs[4] = { l,r,d,u };
+		bool dirs[4] = { l,r,u,d };
 
 		unsigned short dir = (Random::randomInt() % totalDirs) + 1;
 
@@ -168,9 +174,12 @@ bool Simulation::addAgent(Agent parent) {
 			dir -= dirs[i];
 		}
 
+		i--;
+
 		Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
 
 		pos = parent.pos + deltas[i];
+		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	}
 
@@ -201,17 +210,20 @@ bool Simulation::addAgent(Agent parent) {
 	yPositions.push_back(newAgent.pos.y);
 	foodLevels.push_back(newAgent.food);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
+	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
 	return true;
 }
 
 void Simulation::removeAgent(size_t index) {
-	removePendingList.push_back(index);
-	Agent removed = agents[index];
+	if (!std::count(removePendingList.begin(), removePendingList.end(), index)) {
+		removePendingList.push_back(index);
+		Agent removed = agents[index];
 
-	// Non index based maps can be updated immediatly
-	signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;
-	specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID;
+		// Non index based maps can be updated immediatly
+		signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;
+		specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID;
+	}
 }
 
 void Simulation::processRemoveRequests() {
@@ -243,6 +255,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 	SpecieID id = getSpecieID();
 
 	Tensor specieSignal = specieSignalAllocator.getTensor();
+
+	specieConrelationMap[id] = parent;
 
 	if (parent == NULL_ID) {
 
@@ -335,6 +349,7 @@ void Simulation::eraseSpecieMember(SpecieID specie) {
 		specieInstaceCounter.erase(specie);
 		specieSignalAllocator.freeTensor(specieSignalDict[specie]);
 		specieSignalDict.erase(specie);
+		specieConrelationMap.erase(specie);
 	}
 }
 
@@ -378,6 +393,7 @@ bool Simulation::addToAgentFood(size_t index, float food) {
 }
 
 void Simulation::setAgentPos(size_t index, Position newPos) {
+	indexMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = index;
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 	agents[index].lastPos = agents[index].pos;
 	agents[index].pos = newPos;
@@ -399,7 +415,7 @@ void Simulation::moveAgent(size_t index, Position delta) {
 			return;
 		}
 
-		setAgentPos(index, agents[index].pos + delta);
+		setAgentPos(index, to);
 	}
 }
 
@@ -424,9 +440,9 @@ void Simulation::attack(size_t index) {
 		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 		if (positionOccupied(pos)) {
 			size_t target = getAgentAt(pos);
-			totalFoodBalance += std::min(Constants::attackEnergyGain,agents[i].food);
+			totalFoodBalance += std::min(Constants::attackEnergyGain,agents[target].food);
 			// The max in this case is not really necessary but it's put for consistency
-			if (!addToAgentFood(target, std::max(-Constants::attackEnergyGain,-agents[i].food))) removeAgent(target);
+			if (!addToAgentFood(target, std::max(-Constants::attackEnergyGain,-agents[target].food))) removeAgent(target);
 		}
 
 	}
@@ -466,6 +482,8 @@ void Simulation::share(size_t index) {
 }
 
 void Simulation::pipelineToAPSG(size_t from, size_t to) {
+
+	profiler.start(COMPILE_ROUTINE);
 	SIE_Manager.compile(&agents[from], to - from, 4);
 	SG_Manager.compile(&agents[from], to - from);
 	AP_Manager.compile(&agents[from], to - from);
@@ -473,7 +491,9 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 	gpuXPositions.slice(0,to - from).setValue(&xPositions[from]);
 	gpuYPositions.slice(0,to - from).setValue(&yPositions[from]);
 	gpuFoodLevels.slice(0, to - from).setValue(&foodLevels[from]);
+	profiler.end(COMPILE_ROUTINE);
 
+	profiler.start(SIE_INPUT_ROUTINE);
 	SqGenKernels::processSIEInputs(
 		logicMapObserveRange.getGpuPointer(),
 		gpuSpecieSignalMap.getGpuMapPointer(),
@@ -488,10 +508,19 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 
 	gpuSync();
 
+	profiler.end(SIE_INPUT_ROUTINE);
+
 	Tensor slicedSIE_pool = SIE_InputPool.slice(0, (to - from) * 4);
+
+	profiler.start(SIE_PREDICT_ROUTINE);
+
 	Tensor SIE_out = SIE_Manager.predict(slicedSIE_pool);
 
+	profiler.end(SIE_PREDICT_ROUTINE);
+
 	// From here nothing is tested
+
+	profiler.start(APSG_INPUT_ROUTINE);
 
 	SqGenKernels::processAPSGInputs(
 		logicMapObserveRange.getGpuPointer(),
@@ -510,6 +539,7 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 
 	gpuSync();
 
+	profiler.end(APSG_INPUT_ROUTINE);
 
 	// Sync and compile AP inputs
 }
@@ -517,15 +547,22 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	Tensor slicedAPSG = APSG_InputPool.slice(0, to - from);
 
+	// What the fuck
+	profiler.start(SG_PREDICT_ROUTINE);
 	Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
-	Tensor decisions = AP_Manager.predict(slicedAPSG);
+	profiler.end(SG_PREDICT_ROUTINE);
 
+	profiler.start(AP_PREDICT_ROUTINE);
+	Tensor decisions = AP_Manager.predict(slicedAPSG);
+	profiler.end(AP_PREDICT_ROUTINE);
+
+	profiler.start(DECISION_PROCESS_ROUTINE);
 	decisions.getValue(decisionOutput);
 	generatedSignals.getValue(generatedSignalsOutput);
 
-	for (int i = 0; i < 3; i++) {
-		std::cout << " " << generatedSignalsOutput[i] << " \n";
-	}
+	//for (int i = 0; i < 3; i++) {
+	//	std::cout << " " << generatedSignalsOutput[i] << " \n";
+	//}
 
 	for (size_t i = 0; i < to - from; i++) {
 		Agent& agent = agents[from + i];
@@ -560,11 +597,14 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 			break;
 		}
 	}
+	profiler.end(DECISION_PROCESS_ROUTINE);
 }
 
 void Simulation::update() {
 
-	updateLock.lock();
+	profiler.reset();
+
+	if (paused) return;
 
 	gpuSync();
 
@@ -586,15 +626,45 @@ void Simulation::update() {
 
 	}
 
-	updateLock.unlock();
+	processRemoveRequests();
 	
 	// TODO: AAAAAAAAAAAAAAAAAAAa
+}
+
+SpecieID Simulation::getParentSpecie(SpecieID child) {
+	return specieConrelationMap[child];
 }
 
 float* Simulation::getFoodMap() {
 	return foodMap;
 }
 
+SpecieID* Simulation::getSpecieMap() {
+	return specieMap;
+}
+
 float* Simulation::getSignalMap() {
 	return signalMap;
+}
+
+std::vector<Agent>& Simulation::getAgents() {
+	return agents;
+}
+
+void Simulation::printProfilerInfo() {
+
+	std::cout << "Total agents: " << agents.size() << "\n";
+
+	std::cout << "Compile Time: " << profiler.get(COMPILE_ROUTINE) << " ms\n"
+		<< "SIE Input: " << profiler.get(SIE_INPUT_ROUTINE) << " ms\n"
+		<< "SIE Predict: " << profiler.get(SIE_PREDICT_ROUTINE) << " ms\n"
+		<< "APSG Input: " << profiler.get(APSG_INPUT_ROUTINE) << " ms\n"
+		<< "AP Predict: " << profiler.get(AP_PREDICT_ROUTINE) << " ms\n"
+		<< "SG Predict: " << profiler.get(SG_PREDICT_ROUTINE) << " ms\n"
+		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n";
+ 
+}
+
+void Simulation::togglePause() {
+	paused = !paused;
 }
