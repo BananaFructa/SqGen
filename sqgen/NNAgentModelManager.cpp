@@ -159,14 +159,16 @@ void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float pro
 	if (!hasVariables) return;
 
 	Tensor* tensorsData = getVariableSet();
-
 	Tensor* parentData = agentModelVariables[parent];
 
 	for (size_t i = 0; i < variableSizes.size(); i++) {
 
-		parentData[i].copyTo(tensorsData[i]);
-		curandManager.rndOffsetTensorUniform(tensorsData[i], prob, low, high, zprob);
+		Tensor current = tensorsData[i];
+		Tensor parent = parentData[i];
 
+		parentData[i].copyTo(tensorsData[i]);
+
+		curandManager.rndOffsetTensorUniform(tensorsData[i], prob, low, high, zprob);
 	}
 
 	agentModelVariables[id] = tensorsData;

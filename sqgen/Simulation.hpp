@@ -247,6 +247,7 @@ public:
 	SpecieID* getSpecieMap();
 
 	std::vector<Agent>& getAgents();
+	std::map<SpecieID, Tensor>& getSignalDict();
 
 	void printProfilerInfo();
 

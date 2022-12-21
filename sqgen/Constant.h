@@ -36,7 +36,7 @@ namespace Constants {
 	};
 
 	const NetworkInitDetails SG_InitDetails{
-		9,		// Init Inputs
+		10,		// Init Inputs
 		5,		// Init Hidden
 		1		// Init Amplitude
 	};	
@@ -54,10 +54,10 @@ namespace Constants {
 
 	const int agentObserveRange = 2;
 	const int agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
-	const float specieSignalMutationProb = 0;
-	const float specieSignalMutatuionAmplitude = 0;
+	const float specieSignalMutationProb = 0.5;
+	const float specieSignalMutatuionAmplitude = 0.2;
 
-	const float agentMutationProbability = 1;
+	const float agentMutationProbability = 0.3;
 
 	const NetworkMutationDetails AP_MutationDetails = {
 		0,		// Non-zero mutation probability

@@ -21,7 +21,7 @@ int main() {
 	std::thread([&]() {
 		for (;;) {
 			simulation.update();
-			simulation.printProfilerInfo();
+			if (!simulation.paused) simulation.printProfilerInfo();
 			renderMananger.updateRenderData();
 		}
 	}).detach();

@@ -286,9 +286,11 @@ __global__ void randomizeTensorUniform_kernel(curandState_t* state, Tensor_DEVIC
 
 __global__ void rndOffsetTensorUniform_kernel(curandState_t* state, Tensor_DEVICE t, size_t size, float prob, float low, float absoluteDifference, float zprob) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-	bool z = t[i] == 0;
-	bool u = i < size && ((!z && curand_uniform(&state[i]) < prob) || (z && curand_uniform(&state[i]) < zprob));
-	if (u) t[i] += (curand_uniform(&state[i]) * absoluteDifference + low);
+	if (i < size) {
+		bool z = t[i] == 0;
+		bool u = ((!z && curand_uniform(&state[i]) < prob) || (z && curand_uniform(&state[i]) < zprob));
+		if (u) t[i] += (curand_uniform(&state[i]) * absoluteDifference + low);
+	}
 }
 
 __global__ void clampTensor_kernel(Tensor_DEVICE t, size_t size, float lower, float upper) {

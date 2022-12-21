@@ -33,7 +33,7 @@ void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
-	model.addLayer(new SimpleRecurrentLayer(20, 20, Activation::SIGMOID, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
 	model.addLayer(new DenseLayer(20, 9, Activation::SOFTMAX));
 }
 
@@ -141,6 +141,7 @@ void Simulation::addNewAgent() {
 	yPositions.push_back(newAgent.pos.y); // y vec
 	foodLevels.push_back(newAgent.food);
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
+	size_t r = agents.size() - 1;
 	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
 }
@@ -301,7 +302,7 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 			Constants::SIE_MutationDetails.mutationAmplitude,
 			Constants::SIE_MutationDetails.zeroMutationProbability
 		);
-
+		
 		SG_Manager.registerSpecie(
 			parent,
 			id,
@@ -393,13 +394,14 @@ bool Simulation::addToAgentFood(size_t index, float food) {
 }
 
 void Simulation::setAgentPos(size_t index, Position newPos) {
-	indexMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = index;
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 	agents[index].lastPos = agents[index].pos;
 	agents[index].pos = newPos;
 	xPositions[index] = newPos.x;
 	yPositions[index] = newPos.y;
 	specieMap[newPos.y + newPos.x * Constants::mapSize] = agents[index].specieId;
+	indexMap[newPos.y + newPos.x * Constants::mapSize] = index;
 }
 
 void Simulation::moveAgent(size_t index, Position delta) {
@@ -556,6 +558,8 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	Tensor decisions = AP_Manager.predict(slicedAPSG);
 	profiler.end(AP_PREDICT_ROUTINE);
 
+	gpuSync();
+
 	profiler.start(DECISION_PROCESS_ROUTINE);
 	decisions.getValue(decisionOutput);
 	generatedSignals.getValue(generatedSignalsOutput);
@@ -663,6 +667,10 @@ void Simulation::printProfilerInfo() {
 		<< "SG Predict: " << profiler.get(SG_PREDICT_ROUTINE) << " ms\n"
 		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n";
  
+}
+
+std::map<SpecieID, Tensor>& Simulation::getSignalDict() {
+	return specieSignalDict;
 }
 
 void Simulation::togglePause() {

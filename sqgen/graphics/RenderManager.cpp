@@ -1,4 +1,5 @@
 #include <thread>
+#include <future>
 #include "RenderManager.hpp"
 #include "RenderUtils.hpp"
 
@@ -52,7 +53,7 @@ void RenderManager::updateRenderData() {
             for (int y = 0; y < Constants::mapSize; y++) {
                 float s = signalMap[y + x * Constants::mapSize];
                 float factor = (s + 1) / 2;
-                sf::Color color((1-factor)*255, 0, factor * 255);
+                sf::Color color(factor*255, 0, (1-factor) * 255);
 
                 backAgent[(y + x * Constants::mapSize) * 4].color = color;
                 backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
@@ -122,7 +123,7 @@ void RenderManager::RenderLoop() {
         if (IsGridDisplayed)
             DrawGrid(Window, FieldOfView);
 
-        cursorSprite.setPosition((sf::Vector2f)cursorPos - sf::Vector2f(50.05,50.05) - CameraPosition);
+        cursorSprite.setPosition((sf::Vector2f)cursorPos - sf::Vector2f(0.05 + Constants::mapSize / 2,0.05 + Constants::mapSize / 2) - CameraPosition);
         Window.draw(cursorSprite);
 
         Window.display();
@@ -143,7 +144,38 @@ void RenderManager::RunEvent(sf::Event Event) {
         sf::Vector2i pixelPos = sf::Mouse::getPosition(Window);
         sf::Vector2f worldPos = Window.mapPixelToCoords(pixelPos) + CameraPosition;
 
-        cursorPos = sf::Vector2i((int)(worldPos.x + 50), (int)(worldPos.y + 50));
+        cursorPos = sf::Vector2i((int)(worldPos.x + Constants::mapSize/2), (int)(worldPos.y + Constants::mapSize / 2));
+        if (SimulationToRender.getSpecieMap()[cursorPos.y + cursorPos.x * Constants::mapSize] != NULL_ID) {
+            int a = 9;
+            std::async([&]() {
+
+                std::cout << "=========================\n";
+
+                Agent agent = SimulationToRender.getAgents()[SimulationToRender.getAgentAt(Position(cursorPos.x, cursorPos.y))];
+
+                float sig[Constants::spicieSignalCount];
+
+                SimulationToRender.getSignalDict()[agent.specieId].getValue(sig);
+
+                std::cout << "Specie signal:\n";
+                for (size_t i = 0; i < Constants::spicieSignalCount; i++) {
+                    std::cout << sig[i] << " ";
+                }
+
+                std::cout << '\n';
+
+                std::cout << "Food level: " << agent.food << '\n';
+                std::cout << "Current sigal: " << SimulationToRender.getSignalMap()[cursorPos.y + cursorPos.x * Constants::mapSize] << "\n";
+
+                std::cout << "Generation: " << agent.generation << "\n";
+                std::cout << "Specie ID: " << agent.specieId << "\n";
+                std::cout << "Agent ID: " << agent.id << "\n";
+
+                std::cout << "=========================\n";
+
+            });
+
+        }
     }
 
     if (Event.type == sf::Event::KeyPressed) {
