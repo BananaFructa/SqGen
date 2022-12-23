@@ -79,18 +79,17 @@ namespace Constants {
 
 	constexpr float initialMapFood = 1;
 
-	constexpr float maximumFood = 5;
+	constexpr float maximumFood = 5; // when dead the agent should spill
 	constexpr float initialFood = 1;
 	constexpr float eatAmount = 0.1;
-	constexpr float moveEnergyCost = 0.01;
-	constexpr float multiplyEnergyCost = 2;
-	constexpr float attackEnergyCost = 0.1;
+	constexpr float moveEnergyCost = 0.01; // spilled
+	constexpr float multiplyEnergyCost = 2; // this energy should also be included in the spillage
+
+	constexpr float attackEnergyCost = 0.1; // make energy be spilled on the map
 	constexpr float attackEnergyGain = 0.5;
 
 	constexpr float shareEnergyTransfer = 0.3;
 	constexpr int shareRadius = 1;
 
-	constexpr float foodIncrease = 0.001; // 0.01
-
-	// test
+	constexpr float foodIncrease = 0.001; // this needs to be removed
 }
