@@ -1,5 +1,6 @@
 #include <thread>
 #include <future>
+#include <ppl.h>
 #include "RenderManager.hpp"
 #include "RenderUtils.hpp"
 
@@ -12,55 +13,55 @@ void RenderManager::updateRenderData() {
     sf::VertexArray& backFood = buffer.getBackFoodMap();
     sf::VertexArray& backAgent = buffer.getBackAgentMap();
 
-    for (int i = 0; i < Constants::mapSize; ++i) {
-        for (int j = 0; j < Constants::mapSize; ++j) {
-
-            {
-                SpecieID id = specieMap[j + i * Constants::mapSize];
-                sf::Color color;
-                if (id != 0 && !colorPalette.count(id)) {
-                    SpecieID parent = SimulationToRender.getParentSpecie(id);
-                    if (parent == NULL_ID) color = randomAgentColor();
-                    else color = mutateColor(colorPalette[parent]);
-                    colorPalette[id] = color;
-                }
+    //concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
+    for (size_t l = 0;l < Constants::totalMapSize;l++) {
+        size_t i = l / Constants::mapSize;
+        size_t j = l % Constants::mapSize;
+        {
+            SpecieID id = specieMap[j + i * Constants::mapSize];
+            sf::Color color;
+            if (id != 0 && !colorPalette.count(id)) {
+                SpecieID parent = SimulationToRender.getParentSpecie(id);
+                if (parent == NULL_ID) color = randomAgentColor();
+                else color = mutateColor(colorPalette[parent]);
+                colorPalette[id] = color;
             }
-
-            float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood;
-            sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
-            backFood[(j + i * Constants::mapSize) * 4].color = Color;
-            backFood[(j + i * Constants::mapSize) * 4 + 1].color = Color;
-            backFood[(j + i * Constants::mapSize) * 4 + 2].color = Color;
-            backFood[(j + i * Constants::mapSize) * 4 + 3].color = Color;
         }
-    }
+
+        float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood;
+        sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
+        backFood[(j + i * Constants::mapSize) * 4].color = Color;
+        backFood[(j + i * Constants::mapSize) * 4 + 1].color = Color;
+        backFood[(j + i * Constants::mapSize) * 4 + 2].color = Color;
+        backFood[(j + i * Constants::mapSize) * 4 + 3].color = Color;
+    }//);
 
     if (!SignalMapMode) {
-        for (int x = 0; x < Constants::mapSize; x++) {
-            for (int y = 0; y < Constants::mapSize; y++) {
-                SpecieID id = specieMap[y + x * Constants::mapSize];
-                sf::Color color = colorPalette[id];
+        concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
+            int x = l / Constants::mapSize;
+            int y = l % Constants::mapSize;
+            SpecieID id = specieMap[y + x * Constants::mapSize];
+            sf::Color color = colorPalette[id];
 
-                backAgent[(y + x * Constants::mapSize) * 4].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
-            }
-        }
+            backAgent[(y + x * Constants::mapSize) * 4].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
+        });
     }
     else {
-        for (int x = 0; x < Constants::mapSize; x++) {
-            for (int y = 0; y < Constants::mapSize; y++) {
-                float s = signalMap[y + x * Constants::mapSize];
-                float factor = (s + 1) / 2;
-                sf::Color color(factor*255, 0, (1-factor) * 255);
+        concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
+            int x = l / Constants::mapSize;
+            int y = l % Constants::mapSize;
+            float s = signalMap[y + x * Constants::mapSize];
+            float factor = (s + 1) / 2;
+            sf::Color color(factor * 255, 0, (1 - factor) * 255);
 
-                backAgent[(y + x * Constants::mapSize) * 4].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
-                backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
-            }
-        }
+            backAgent[(y + x * Constants::mapSize) * 4].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
+            backAgent[(y + x * Constants::mapSize) * 4 + 3].color = color;
+        });
     }
 
     buffer.swap();

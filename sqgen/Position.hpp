@@ -31,9 +31,7 @@ struct Position {
 	}
 
 	void wrapPositive(int xMax, int yMax) {
-		if (x < 0) x += xMax;
-		if (x >= xMax) x -= xMax;
-		if (y < 0) y += yMax;
-		if (y >= yMax) y -= yMax;
+		x = (x + xMax) % xMax;
+		y = (y + yMax) % yMax;
 	}
 };

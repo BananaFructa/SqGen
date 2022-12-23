@@ -12,11 +12,14 @@ int main() {
 
 	Simulation simulation;
 
-	for (int i = 0; i < 20;i++) simulation.addNewAgent();
-
 	//simulation.setAgentPos(0, Position(3, 7));
 
 	RenderManager renderMananger(simulation);
+
+	for (int i = 0; i < 20000; i++) {
+		if ((i + 1) % 1000 == 0) std::cout << "Generating agents " << (i + 1) << '\n';
+		simulation.addNewAgent();
+	}
 
 	std::thread([&]() {
 		for (;;) {

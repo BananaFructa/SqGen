@@ -146,7 +146,6 @@ public:
 //  =======================================================================
 
 	std::vector<Agent> agents;
-	std::vector<size_t> removePendingList;
 	
 	// Linearly memeory stored positions for gpu upload
 	// Used for input compiling
@@ -220,12 +219,11 @@ public:
 	void addNewAgent();
 	bool addAgent(Agent parent);
 	void removeAgent(size_t index);
-	void processRemoveRequests();
 
 	void eat(size_t index);
 	void attack(size_t index);
 	void share(size_t index);
-	bool addToAgentFood(size_t index, float food);
+	void addToAgentFood(size_t index, float food);
 	void setAgentPos(size_t index, Position newPos);
 	void moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);

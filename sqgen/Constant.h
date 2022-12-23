@@ -18,26 +18,26 @@ namespace Constants {
 
 	// ========== MEMORY AND PROCESS MANAGMENT CONSTANTS ===========
 
-	const size_t nnPoolSize = 100'000;
-	const size_t curandPoolSize = 1000;
-	const unsigned long seed = 126;
+	constexpr size_t nnPoolSize = 100'000;
+	constexpr size_t curandPoolSize = 1000;
+	constexpr unsigned long seed = 177;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
-	const size_t spicieSignalCount = 10;
-	const float specieSignalAmplitude = 1;
+	constexpr size_t spicieSignalCount = 10;
+	constexpr float specieSignalAmplitude = 1;
 
-	const size_t visualLatentSize = 1;
+	constexpr size_t visualLatentSize = 1;
 
 	const NetworkInitDetails AP_InitDetails = {
-		10,		// Init Inputs
-		20,		// Init Hidden
+		6,		// Init Inputs
+		10,		// Init Hidden
 		1.0f	// Init Amplitude
 	};
 
 	const NetworkInitDetails SG_InitDetails{
-		10,		// Init Inputs
-		5,		// Init Hidden
+		0,		// Init Inputs
+		0,		// Init Hidden
 		1		// Init Amplitude
 	};	
 
@@ -49,44 +49,46 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	const size_t mapSize = 200;
-	const size_t totalMapSize = mapSize * mapSize;
+	constexpr size_t mapSize = 400;
+	constexpr size_t totalMapSize = mapSize * mapSize;
 
-	const int agentObserveRange = 2;
-	const int agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
-	const float specieSignalMutationProb = 0.5;
-	const float specieSignalMutatuionAmplitude = 0.2;
+	constexpr int agentObserveRange = 2;
+	constexpr int agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
+	constexpr float specieSignalMutationProb = 0.5;
+	constexpr float specieSignalMutatuionAmplitude = 0.1;
 
-	const float agentMutationProbability = 0.3;
+	constexpr float agentMutationProbability = 0.1;
 
 	const NetworkMutationDetails AP_MutationDetails = {
-		0,		// Non-zero mutation probability
-		0,		// Zero mutation probability
-		0		// Mutation Amplitude
+		0.15,		// Non-zero mutation probability
+		0.001,		// Zero mutation probability
+		0.1		// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SG_MutationDetails = {
-		0,		// Non-zero mutation probability
-		0,		// Zero mutation probability
-		0		// Mutation Amplitude
+		0.05,		// Non-zero mutation probability
+		0.01,		// Zero mutation probability
+		0.2		// Mutation Amplitude	// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SIE_MutationDetails = {
-		0,		// Non-zero mutation probability
+		0.1,		// Non-zero mutation probability
 		0,		// Zero mutation probability
-		0		// Mutation Amplitude
+		0.1		// Mutation Amplitude		// Mutation Amplitude
 	};
 
-	const float initialMapFood = 1;
+	constexpr float initialMapFood = 1;
 
-	const float maximumFood = 30;
-	const float initialFood = 10;
-	const float eatAmount = 0;
-	const float moveEnergyCost = 0;
-	const float multiplyEnergyCost = 0;
-	const float attackEnergyCost = 0;
-	const float attackEnergyGain = 0;
+	constexpr float maximumFood = 5;
+	constexpr float initialFood = 1;
+	constexpr float eatAmount = 0.1;
+	constexpr float moveEnergyCost = 0.01;
+	constexpr float multiplyEnergyCost = 2;
+	constexpr float attackEnergyCost = 0.1;
+	constexpr float attackEnergyGain = 0.5;
 
-	const float shareEnergyTransfer = 0;
-	const int shareRadius = 0;
+	constexpr float shareEnergyTransfer = 0.3;
+	constexpr int shareRadius = 1;
+
+	constexpr float foodIncrease = 0.001; // 0.01
 }

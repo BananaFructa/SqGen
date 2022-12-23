@@ -6,6 +6,26 @@
 
 #include <algorithm>
 
+// SPECIE MAP - HOLDS THE SPECIE IDS AT A POSITION (USED FOR CHECKING IF A POSITION IS OCCUPTIDE BY AN AGENT)
+// 
+// INDEX MAP - HOLDS THE AGENT VECTOR INDEX FOR THE AGENT THAT IS AT A CERTAIN POSITION, POSITIONS THAT ARE NOT
+// OCCUPPIED CAN HAVE ANY VALUE
+//
+// SIGNAL MAP - HOLD THE SIGNAL OF THE AGENT AT A POSITION, EMPTY SLOTS HAVE A 0 SIGNAL
+//
+// WHEN AN AGENT NEEDS TO BE REMOVED ITS POSITION ON THE SPECIE AND SIGNAL MAP ARE SET TO 0 AND AFTER ALL THE
+// DECISION PROCESSING IS DONE THEY ARE REMOVED FROM THE AGENT VECTOR
+// TO REMOVE AN ELEMENT FROM THE AGENT VECTOR THE LAST ELEMENT IN THE VECTOR REPLACES THE ELEMENT THAT NEEDS TO BE
+// REMOVED AND THE VECTOR IS SHRUNK BY ONE, THAT SAID THE INDEX MAP ALSO HAS TO BE UPDATED AND AS I AM WRITTING THIS
+// I REALISE THAT THERE IS A PROBLEM IF BOTH THE ELEMENT AT THE END AND SOME ELEMENT IN THE MIDDLE NEEDS TO REMOVED
+// TODO: REPAIR THIS MESS
+
+/*
+* 1) Sort by probability
+* 2) Run actions, decrease if enough set to 0 otherwise
+* 3) Erase dead agents
+*/
+
 #define COMPILE_ROUTINE 0
 #define SIE_INPUT_ROUTINE 1
 #define APSG_INPUT_ROUTINE 2
@@ -17,24 +37,27 @@
 void Simulation::buildSIE(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 20, Activation::TANH));
-	model.addLayer(new DenseLayer(20, 20, Activation::TANH));
-	model.addLayer(new DenseLayer(20, Constants::visualLatentSize, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, Constants::visualLatentSize, Activation::TANH));
 }
 
 void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(5, 5, Activation::SIGMOID));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
 	model.addLayer(new DenseLayer(5, 1, Activation::TANH));
 }
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 20, Activation::SIGMOID));
-	model.addLayer(new DenseLayer(20, 9, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 40, Activation::TANH));
+	model.addLayer(new SimpleRecurrentLayer(40, 40, Activation::TANH, Activation::TANH));
+	model.addLayer(new DenseLayer(40, 40, Activation::TANH));
+	model.addLayer(new DenseLayer(40, 9, Activation::SOFTMAX));
 }
 
 Simulation::Simulation() {
@@ -106,12 +129,13 @@ Simulation::Simulation() {
 }
 
 size_t Simulation::getAgentAt(Position pos) {
+	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return indexMap[pos.y + pos.x * Constants::mapSize];
 }
 
 void Simulation::addNewAgent() {
 
-	if (agents.size() == Constants::mapSize) return;
+	if (agents.size() == Constants::totalMapSize) return;
 
 	// Choose position
 
@@ -217,39 +241,34 @@ bool Simulation::addAgent(Agent parent) {
 }
 
 void Simulation::removeAgent(size_t index) {
-	if (!std::count(removePendingList.begin(), removePendingList.end(), index)) {
-		removePendingList.push_back(index);
-		Agent removed = agents[index];
+	Agent removed = agents[index];
 
-		// Non index based maps can be updated immediatly
-		signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;
-		specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID;
-	}
-}
+	// Non index based maps can be updated immediatly
+	signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;		 // These two make the agent invisible
+	specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID; // to the simulation
 
-void Simulation::processRemoveRequests() {
-	for (size_t i = 0; i < removePendingList.size(); i++) {
-		size_t index = removePendingList[i];
-		Agent removed = agents[index];
-		agents[index] = agents[agents.size() - 1];
-		agents.pop_back();
-		xPositions[index] = xPositions[xPositions.size() - 1];
-		xPositions.pop_back();
-		yPositions[index] = yPositions[yPositions.size() - 1];
-		yPositions.pop_back();
-		foodLevels[index] = foodLevels[foodLevels.size() - 1];
-		foodLevels.pop_back();
+	agents[index] = agents[agents.size() - 1];
+	agents.pop_back();
 
-		SIE_Manager.eraseAgent(removed.id);
-		SG_Manager.eraseAgent(removed.id);
-		AP_Manager.eraseAgent(removed.id);
+	xPositions[index] = xPositions[xPositions.size() - 1];
+	xPositions.pop_back();
+	yPositions[index] = yPositions[yPositions.size() - 1];
+	yPositions.pop_back();
+	foodLevels[index] = foodLevels[foodLevels.size() - 1];
+	foodLevels.pop_back();
 
-		eraseSpecieMember(removed.specieId);
+	SIE_Manager.eraseAgent(removed.id);
+	SG_Manager.eraseAgent(removed.id);
+	AP_Manager.eraseAgent(removed.id);
 
-		avalabileAgentIDs.push_back(removed.id);
-	}
+	eraseSpecieMember(removed.specieId);
 
-	removePendingList.clear();
+	avalabileAgentIDs.push_back(removed.id);
+
+	if (index == agents.size()) return;
+
+	Position pos = agents[index].pos;
+	indexMap[pos.y + pos.x * Constants::mapSize] = index;
 }
 
 SpecieID Simulation::newSpiecie(size_t parent) {
@@ -383,23 +402,21 @@ void Simulation::gpuUploadMaps() {
 	gpuSpecieSignalMap.syncMap();
 }
 
-bool Simulation::addToAgentFood(size_t index, float food) {
+void Simulation::addToAgentFood(size_t index, float food) {
 	agents[index].food += food;
 	foodLevels[index] += food;
-	if (agents[index].food <= 0 || agents[index].food > Constants::maximumFood) {
-		removeAgent(index);
-		return false;
-	}
-	return true;
 }
 
 void Simulation::setAgentPos(size_t index, Position newPos) {
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+
 	agents[index].lastPos = agents[index].pos;
 	agents[index].pos = newPos;
+
 	xPositions[index] = newPos.x;
 	yPositions[index] = newPos.y;
+
 	specieMap[newPos.y + newPos.x * Constants::mapSize] = agents[index].specieId;
 	indexMap[newPos.y + newPos.x * Constants::mapSize] = index;
 }
@@ -412,11 +429,7 @@ void Simulation::moveAgent(size_t index, Position delta) {
 
 	if (!positionOccupied(to)) {
 
-		if (!addToAgentFood(index, -Constants::moveEnergyCost)) {
-			removeAgent(index);
-			return;
-		}
-
+		addToAgentFood(index, -Constants::moveEnergyCost);
 		setAgentPos(index, to);
 	}
 }
@@ -424,11 +437,11 @@ void Simulation::moveAgent(size_t index, Position delta) {
 void Simulation::eat(size_t index) {
 	Position pos = agents[index].pos;
 	if (foodMap[pos.y + pos.x * Constants::mapSize] >= Constants::eatAmount) {
-		if (!addToAgentFood(index, Constants::eatAmount)) removeAgent(index);
+		addToAgentFood(index, Constants::eatAmount);
 		foodMap[pos.y + pos.x * Constants::mapSize] -= Constants::eatAmount;
 	}
 	else {
-		if (!addToAgentFood(index, foodMap[pos.y + pos.x * Constants::mapSize])) removeAgent(index);
+		addToAgentFood(index, foodMap[pos.y + pos.x * Constants::mapSize]);
 		foodMap[pos.y + pos.x * Constants::mapSize] = 0;
 	}
 }
@@ -444,12 +457,12 @@ void Simulation::attack(size_t index) {
 			size_t target = getAgentAt(pos);
 			totalFoodBalance += std::min(Constants::attackEnergyGain,agents[target].food);
 			// The max in this case is not really necessary but it's put for consistency
-			if (!addToAgentFood(target, std::max(-Constants::attackEnergyGain,-agents[target].food))) removeAgent(target);
+			addToAgentFood(target, std::max(-Constants::attackEnergyGain, -agents[target].food));
 		}
 
 	}
 
-	if (!addToAgentFood(index, totalFoodBalance)) removeAgent(index);
+	addToAgentFood(index, totalFoodBalance);
 }
 
 void Simulation::share(size_t index) {
@@ -464,12 +477,11 @@ void Simulation::share(size_t index) {
 		for (int y = -Constants::shareRadius; y <= Constants::shareRadius; y++) {
 			Position current = Position(x, y);
 			Position relative = pos + current;
-			relative.wrapPositive(Constants::mapSize, Constants::mapSize);
 			if (positionOccupied(relative)) neighbours++;
 		}
 	}
 
-	if (neighbours != 0) if (!addToAgentFood(index, -sharable)) removeAgent(index);
+	if (neighbours != 0) addToAgentFood(index, -sharable);
 
 	for (int x = -Constants::shareRadius; x <= Constants::shareRadius; x++) {
 		for (int y = -Constants::shareRadius; y <= Constants::shareRadius; y++) {
@@ -477,7 +489,7 @@ void Simulation::share(size_t index) {
 			Position relative = pos + current;
 			if (positionOccupied(relative)) {
 				int n = getAgentAt(relative);
-				if (!addToAgentFood(n, sharable / neighbours)) removeAgent(n);
+				addToAgentFood(n, sharable / neighbours);
 			}
 		}
 	}
@@ -564,10 +576,6 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	decisions.getValue(decisionOutput);
 	generatedSignals.getValue(generatedSignalsOutput);
 
-	//for (int i = 0; i < 3; i++) {
-	//	std::cout << " " << generatedSignalsOutput[i] << " \n";
-	//}
-
 	for (size_t i = 0; i < to - from; i++) {
 		Agent& agent = agents[from + i];
 		Position pos = agent.pos;
@@ -576,7 +584,13 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 			eat(from + i);
 			break;
 		case MULTIPLY:
-			addAgent(agent);
+			if (agent.food >= Constants::multiplyEnergyCost) {
+				addToAgentFood(i, -Constants::multiplyEnergyCost);
+				addAgent(agent);
+			}
+			else {
+				agent.food = 0;
+			}
 			break;
 		case UP:
 			moveAgent(from + i, Position(0, -1));
@@ -627,10 +641,13 @@ void Simulation::update() {
 	if (remaining != 0) {
 		pipelineToAPSG(current, current + remaining);
 		runAPSGAndProcessDecisions(current, current + remaining);
-
 	}
 
-	processRemoveRequests();
+	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
+		if (agents[i].food <= 0 || agents[i].food > Constants::maximumFood) removeAgent(i);
+	}
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) if (foodMap[i] < Constants::initialMapFood)foodMap[i] += Constants::foodIncrease;
 	
 	// TODO: AAAAAAAAAAAAAAAAAAAa
 }

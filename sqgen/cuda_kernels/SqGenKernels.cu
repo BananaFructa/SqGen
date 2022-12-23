@@ -83,9 +83,9 @@ __global__ void processAPSGInputs_kernel(
 		int cy = yPositionSet[t];
 
 		// Current agent food
-		inputPool[t * 10 + 0] = foodLevels[t];
+		inputPool[t * 10 + 0] = foodLevels[t] / Constants::maximumFood;
 		// Food value of the tile
-		inputPool[t * 10 + 1] = foodMap[cy + cx * mapSize];
+		inputPool[t * 10 + 1] = foodMap[cy + cx * mapSize] / Constants::initialMapFood;
 
 		// Copy the visual data from the SIE output
 		for (size_t i = 0; i < 4; i++) {
@@ -144,5 +144,4 @@ void SqGenKernels::processAPSGInputs(
 	dim3 blockSize((agentCount + threadSize.x - 1) / threadSize.x);
 
 	processAPSGInputs_kernel <<< blockSize, threadSize >>> (logicMap, xPositionSet, yPositionSet, SIE_Output, foodMap, foodLevels, signalMap, inputPool, viewRange, mapSize, agentCount);
-	// TODO: implementation
 }
