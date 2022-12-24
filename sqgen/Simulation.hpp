@@ -227,6 +227,7 @@ public:
 	void setAgentPos(size_t index, Position newPos);
 	void moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);
+	void spillFood(Position pos, float amount);
 
 	SpecieID newSpiecie(size_t parent);
 	void registerNewSpecieMember(SpecieID specie);

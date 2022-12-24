@@ -78,7 +78,6 @@ namespace Constants {
 	};
 
 	constexpr float initialMapFood = 1;
-
 	constexpr float maximumFood = 5; // when dead the agent should spill
 	constexpr float initialFood = 1;
 	constexpr float eatAmount = 0.1;

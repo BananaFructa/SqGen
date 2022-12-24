@@ -434,6 +434,12 @@ void Simulation::moveAgent(size_t index, Position delta) {
 	}
 }
 
+void Simulation::spillFood(Position pos, float amount) {
+
+	float perSquare = amount
+
+}
+
 void Simulation::eat(size_t index) {
 	Position pos = agents[index].pos;
 	if (foodMap[pos.y + pos.x * Constants::mapSize] >= Constants::eatAmount) {
