@@ -29,6 +29,7 @@ void RenderManager::updateRenderData() {
         }
 
         float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood;
+        factor = std::min(1.0f, factor);
         sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
         backFood[(j + i * Constants::mapSize) * 4].color = Color;
         backFood[(j + i * Constants::mapSize) * 4 + 1].color = Color;

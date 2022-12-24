@@ -16,7 +16,7 @@ int main() {
 
 	RenderManager renderMananger(simulation);
 
-	for (int i = 0; i < 20000; i++) {
+	for (int i = 0; i < Constants::startingAgentCount; i++) {
 		if ((i + 1) % 1000 == 0) std::cout << "Generating agents " << (i + 1) << '\n';
 		simulation.addNewAgent();
 	}

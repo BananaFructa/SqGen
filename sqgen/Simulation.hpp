@@ -251,4 +251,6 @@ public:
 	void printProfilerInfo();
 
 	void togglePause();
+
+	float getTotalFood();
 };

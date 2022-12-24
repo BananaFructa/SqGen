@@ -20,7 +20,7 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 100'000;
 	constexpr size_t curandPoolSize = 1000;
-	constexpr unsigned long seed = 177;
+	constexpr unsigned long seed = 459;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
@@ -30,8 +30,8 @@ namespace Constants {
 	constexpr size_t visualLatentSize = 1;
 
 	const NetworkInitDetails AP_InitDetails = {
-		6,		// Init Inputs
-		10,		// Init Hidden
+		2,		// Init Inputs
+		5,		// Init Hidden
 		1.0f	// Init Amplitude
 	};
 
@@ -49,7 +49,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 400;
+	constexpr size_t mapSize = 200;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
@@ -77,10 +77,10 @@ namespace Constants {
 		0.1		// Mutation Amplitude		// Mutation Amplitude
 	};
 
-	constexpr float initialMapFood = 1;
+	constexpr float initialMapFood = 0.7;
 	constexpr float maximumFood = 5; // when dead the agent should spill
 	constexpr float initialFood = 1;
-	constexpr float eatAmount = 0.1;
+	constexpr float eatAmount = 0.2;
 	constexpr float moveEnergyCost = 0.01; // spilled
 	constexpr float multiplyEnergyCost = 2; // this energy should also be included in the spillage
 
@@ -90,5 +90,15 @@ namespace Constants {
 	constexpr float shareEnergyTransfer = 0.3;
 	constexpr int shareRadius = 1;
 
-	constexpr float foodIncrease = 0.001; // this needs to be removed
+	constexpr int spillRange = 2;
+	constexpr float spillMap[(spillRange * 2 + 1) * (spillRange * 2 + 1)] = {
+		 0,			0,			0.0714285,		0,			0,
+		 0,			0.0714285,	0.0714285,		0.0714285,	0,
+		 0.0714285, 0.0714285,	0.0714285 ,		0.0714285 ,	0.0714285,
+		 0,			0.0714285,	0.0714285,		0.0714285,	0,
+		 0,			0,			0.0714285,		0,			0
+	};
+
+	constexpr int startingAgentCount = 5000;
+	constexpr float targetEnergy = totalMapSize * initialMapFood + startingAgentCount * (initialFood + multiplyEnergyCost);
 }
