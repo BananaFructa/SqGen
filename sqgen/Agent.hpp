@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Position.hpp"
+#include "Rational.hpp"
 
 #define NULL_ID 0
 
@@ -21,6 +22,6 @@ struct Agent {
 
 	size_t generation = 0;
 
-	float food = 0;
+	Rational food;
 
 };

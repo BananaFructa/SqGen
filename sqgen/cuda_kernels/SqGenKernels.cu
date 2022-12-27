@@ -23,16 +23,16 @@ __global__ void processSIEInputs_kernel(
 	size_t t = threadIdx.x + blockIdx.x * blockDim.x;
 	if (t < agentCount) {
 
-		int cx = xPositionSet[t] - viewRange; // position x of the agent
-		int cy = yPositionSet[t] - viewRange; // position y of the agent
+		int cx = xPositionSet[t]; // position x of the agent
+		int cy = yPositionSet[t]; // position y of the agent
 		size_t indexInModelInput = t * 4; // The index in the SIE input tensor
 		
 		size_t x, y;
 
 		for (size_t i = 0; i < (viewRange * 2 + 1) * (viewRange * 2 + 1); i++) {
 			// first
-			x = cx + i / (viewRange * 2 + 1);
-			y = cy + i % (viewRange * 2 + 1);
+			x = cx - viewRange + i / (viewRange * 2 + 1);
+			y = cy - viewRange + i % (viewRange * 2 + 1);
 			x = (x + mapSize) % mapSize;
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
@@ -83,9 +83,9 @@ __global__ void processAPSGInputs_kernel(
 		int cy = yPositionSet[t];
 
 		// Current agent food
-		inputPool[t * 10 + 0] = foodLevels[t] / Constants::maximumFood;
+		inputPool[t * 10 + 0] = foodLevels[t] / Constants::FmaximumFood;
 		// Food value of the tile
-		inputPool[t * 10 + 1] = foodMap[cy + cx * mapSize] / Constants::initialMapFood;
+		inputPool[t * 10 + 1] = min(1.0f,max(0.0f,foodMap[cy + cx * mapSize] / Constants::FinitialMapFood));
 
 		// Copy the visual data from the SIE output
 		for (size_t i = 0; i < 4; i++) {

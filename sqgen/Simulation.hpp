@@ -170,6 +170,7 @@ public:
 
 	// Matrix which contain the food values of each tile
 	float* foodMap = new float[Constants::totalMapSize];
+	Rational* rationalMapFood = new Rational[Constants::totalMapSize];
 	// GPU side matrix of the above
 	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
@@ -208,6 +209,8 @@ public:
 
 	bool paused = false;
 
+	size_t actionTracker[9] = {0};
+
 public:
 
 	Simulation();
@@ -223,11 +226,11 @@ public:
 	void eat(size_t index);
 	void attack(size_t index);
 	void share(size_t index);
-	void addToAgentFood(size_t index, float food);
+	void addToAgentFood(size_t index, Rational food);
 	void setAgentPos(size_t index, Position newPos);
 	void moveAgent(size_t index, Position delta);
 	bool positionOccupied(Position pos);
-	void spillFood(Position pos, float amount);
+	void spillFood(Position pos, Rational amount);
 
 	SpecieID newSpiecie(size_t parent);
 	void registerNewSpecieMember(SpecieID specie);
@@ -253,4 +256,8 @@ public:
 	void togglePause();
 
 	float getTotalFood();
+
+	Rational getFoodAt(Position pos);
+	void setFoodAt(Position pos, Rational r);
+	void restartFoodMap();
 };
