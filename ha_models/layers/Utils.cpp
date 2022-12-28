@@ -8,5 +8,7 @@ Func activationToKernelFunc(Activation acv) {
 		return Func::KERNEL_SIGMOID;
 	case TANH:
 		return Func::KERNEL_TANH;
+	case TANH5:
+		return Func::KERNEL_TANH5;
 	}
 }

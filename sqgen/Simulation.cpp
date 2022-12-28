@@ -45,9 +45,9 @@ void Simulation::buildSIE(NNModel& model) {
 
 void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 5, Activation::TANH));
 	model.addLayer(new DenseLayer(5, 1, Activation::TANH));
 }
 
@@ -55,9 +55,9 @@ void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
 	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
-	for (int i = 0; i < 4;i++) model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
 	model.addLayer(new SimpleRecurrentLayer(10, 10, Activation::TANH, Activation::TANH));
-	for (int i = 0; i < 4; i++) model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
 	model.addLayer(new DenseLayer(10, 9, Activation::SOFTMAX));
 }
 
@@ -292,8 +292,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 
 		SG_Manager.registerNewSpiece(
 			id,
-			Constants::SG_InitDetails.initializedInputs,
-			Constants::SG_InitDetails.initializedHidden,
+		//	Constants::SG_InitDetails.initializedInputs,
+		//	Constants::SG_InitDetails.initializedHidden,
 			-Constants::SG_InitDetails.initAmplitude,
 			Constants::SG_InitDetails.initAmplitude
 		);
@@ -412,6 +412,7 @@ void Simulation::addToAgentFood(size_t index, Rational food) {
 
 void Simulation::setAgentPos(size_t index, Position newPos) {
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+	signalMap[newPos.y + newPos.x * Constants::mapSize] = signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize];
 	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 
 	agents[index].lastPos = agents[index].pos;

@@ -211,6 +211,23 @@ __global__ void funcPassMappedTanh_kernel(TensorMap_DEVICE m, size_t blockSize, 
 	}
 }
 
+__global__ void funcPassTanh5_kernel(Tensor_DEVICE t, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		t[i] = tanhf((float)t[i] * 5.0f);
+	}
+}
+
+__global__ void funcPassMappedTanh5_kernel(TensorMap_DEVICE m, size_t blockSize, size_t allignOffset, size_t size) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	if (i < size) {
+		size_t accesPoint = i + allignOffset;
+		size_t blockId = accesPoint / blockSize;
+		size_t blockIndex = accesPoint % blockSize;
+		m[blockId][blockIndex] = tanhf((float)m[blockId][blockIndex] * 5.0f);
+	}
+}
+
 __global__ void funcPassExp_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
@@ -386,6 +403,9 @@ void CudaKernels::funcPass(Tensor_DEVICE t, Func f, size_t size) {
 		case KERNEL_EXP:
 			funcPassExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
 			break;
+		case KERNEL_TANH5:
+			funcPassTanh5_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (t, size);
+			break;
 	}
 }
 
@@ -405,6 +425,9 @@ void CudaKernels::funcPassMapped(TensorMap_DEVICE m, size_t blockSize_, size_t a
 			break;
 		case KERNEL_EXP:
 			funcPassMappedExp_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
+			break;
+		case KERNEL_TANH5:
+			funcPassMappedTanh5_kernel << < blockSize, threadSize, 0, (currentStream ? *currentStream : 0) >> > (m, blockSize_, allignOffset, size);
 			break;
 	}
 }

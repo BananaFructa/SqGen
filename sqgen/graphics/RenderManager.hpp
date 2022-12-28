@@ -67,6 +67,8 @@ private:
 	int AreaInFrame;
 	bool SignalMapMode;
 
+	bool paused = false;
+
 
 public:
 

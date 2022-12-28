@@ -6,6 +6,8 @@
 
 void RenderManager::updateRenderData() {
 
+    if (paused) return;
+
     float* foodMap = SimulationToRender.getFoodMap();
     float* signalMap = SimulationToRender.getSignalMap();
     SpecieID* specieMap = SimulationToRender.getSpecieMap();
@@ -186,5 +188,6 @@ void RenderManager::RunEvent(sf::Event Event) {
     if (Event.type == sf::Event::KeyPressed) {
         if (Event.key.code == sf::Keyboard::O) SignalMapMode = !SignalMapMode;
         if (Event.key.code == sf::Keyboard::P) SimulationToRender.togglePause();
+        if (Event.key.code == sf::Keyboard::I) paused = !paused;
     }
 }

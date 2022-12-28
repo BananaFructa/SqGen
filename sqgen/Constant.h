@@ -40,7 +40,7 @@ namespace Constants {
 	const NetworkInitDetails SG_InitDetails{
 		0,		// Init Inputs
 		0,		// Init Hidden
-		1		// Init Amplitude
+		1.0f		// Init Amplitude
 	};	
 
 	const NetworkInitDetails SIE_InitDetails = {
@@ -51,7 +51,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 250;
+	constexpr size_t mapSize = 800;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
@@ -59,24 +59,24 @@ namespace Constants {
 	constexpr float specieSignalMutationProb = 0.1;
 	constexpr float specieSignalMutatuionAmplitude = 0.1;
 
-	constexpr float agentMutationProbability = 0.45;
+	constexpr float agentMutationProbability = 0.2;
 
 	const NetworkMutationDetails AP_MutationDetails = {
-		0.34,		// Non-zero mutation probability
+		0.1,		// Non-zero mutation probability
 		0.01,		// Zero mutation probability
 		0.5		// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SG_MutationDetails = {
-		0.34,		// Non-zero mutation probability
+		0.1,		// Non-zero mutation probability
 		0.01,		// Zero mutation probability
 		0.5		// Mutation Amplitude	// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SIE_MutationDetails = {
-		0.34,		// Non-zero mutation probability
+		0.1,		// Non-zero mutation probability
 		0,		// Zero mutation probability
-		0.3		// Mutation Amplitude		// Mutation Amplitude
+		0.5	// Mutation Amplitude		// Mutation Amplitude
 	};
 
 	constexpr Rational initialMapFood = {  1,2	};
@@ -84,7 +84,7 @@ namespace Constants {
 	constexpr Rational initialFood = { 1,1 };
 	constexpr Rational eatAmount = { 1, 2 };
 	constexpr Rational moveEnergyCost = { 1, 20 }; // spilled
-	constexpr Rational multiplyEnergyCost = { 2, 1 }; // this energy should also be included in the spillage
+	constexpr Rational multiplyEnergyCost = { 3, 2 }; // this energy should also be included in the spillage
 
 	constexpr float FinitialMapFood = (float)initialMapFood.a / initialMapFood.b;
 	constexpr float FmaximumFood = (float)maximumFood.a / maximumFood.b;
@@ -104,5 +104,5 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	constexpr int startingAgentCount = 10000;
+	constexpr int startingAgentCount = 10'000;
 }

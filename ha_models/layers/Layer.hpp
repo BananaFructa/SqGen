@@ -7,7 +7,8 @@ enum Activation {
 	ReLU,
 	SIGMOID,
 	TANH,
-	SOFTMAX
+	SOFTMAX,
+	TANH5
 };
 
 class Layer {

@@ -31,7 +31,8 @@ enum Func {
 	KERNEL_ReLU,
 	KERNEL_SIGMOID,
 	KERNEL_TANH,
-	KERNEL_EXP
+	KERNEL_EXP,
+	KERNEL_TANH5
 };
 
 struct AllocRes {
