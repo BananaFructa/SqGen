@@ -170,6 +170,7 @@ public:
 
 	// Matrix which contain the food values of each tile
 	float* foodMap = new float[Constants::totalMapSize];
+	Rational* rationalMapFood = new Rational[Constants::totalMapSize];
 	// GPU side matrix of the above
 	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
@@ -191,7 +192,7 @@ public:
 	std::map<SpecieID, SpecieID> specieConrelationMap;
 
 	// Allocator for specie signals
-	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(Size(1, Constants::spicieSignalCount)));
+	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(1, Constants::spicieSignalCount));
 
 //  =======================================================================
 
@@ -208,6 +209,17 @@ public:
 
 	bool paused = false;
 
+	size_t actionTracker[9] = {0};
+
+	void eat(size_t index);
+	void attack(size_t index);
+	void share(size_t index);
+	void addToAgentFood(size_t index, Rational food);
+	void setAgentPos(size_t index, Position newPos);
+	void moveAgent(size_t index, Position delta);
+	bool positionOccupied(Position pos);
+	void spillFood(Position pos, Rational amount);
+
 public:
 
 	Simulation();
@@ -216,18 +228,12 @@ public:
 
 	size_t getAgentAt(Position pos);
 
+	void addAgentFromSpecie(SpecieID id, Position pos);
 	void addNewAgent();
 	bool addAgent(Agent parent);
 	void removeAgent(size_t index);
 
-	void eat(size_t index);
-	void attack(size_t index);
-	void share(size_t index);
-	void addToAgentFood(size_t index, float food);
-	void setAgentPos(size_t index, Position newPos);
-	void moveAgent(size_t index, Position delta);
-	bool positionOccupied(Position pos);
-
+	SpecieID loadSpecie(const char* path);
 	SpecieID newSpiecie(size_t parent);
 	void registerNewSpecieMember(SpecieID specie);
 	void eraseSpecieMember(SpecieID specie);
@@ -250,4 +256,11 @@ public:
 	void printProfilerInfo();
 
 	void togglePause();
+
+	float getTotalFood();
+
+	Rational getFoodAt(Position pos);
+	void setFoodAt(Position pos, Rational r);
+	void restartFoodMap();
+	float getAgenentEnergy();
 };

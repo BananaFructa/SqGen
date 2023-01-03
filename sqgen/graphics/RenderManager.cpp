@@ -6,15 +6,12 @@
 
 void RenderManager::updateRenderData() {
 
+    float max = 0;
+
     float* foodMap = SimulationToRender.getFoodMap();
-    float* signalMap = SimulationToRender.getSignalMap();
+
     SpecieID* specieMap = SimulationToRender.getSpecieMap();
-
-    sf::VertexArray& backFood = buffer.getBackFoodMap();
-    sf::VertexArray& backAgent = buffer.getBackAgentMap();
-
-    //concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
-    for (size_t l = 0;l < Constants::totalMapSize;l++) {
+    for (size_t l = 0; l < Constants::totalMapSize; l++) {
         size_t i = l / Constants::mapSize;
         size_t j = l % Constants::mapSize;
         {
@@ -27,8 +24,29 @@ void RenderManager::updateRenderData() {
                 colorPalette[id] = color;
             }
         }
+        max = std::max(foodMap[j + i * Constants::mapSize], max);
+    }
 
-        float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood;
+    if (paused) return;
+
+    float* signalMap = SimulationToRender.getSignalMap();
+
+    sf::VertexArray& backFood = buffer.getBackFoodMap();
+    sf::VertexArray& backAgent = buffer.getBackAgentMap();
+
+    //concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
+    for (size_t l = 0;l < Constants::totalMapSize;l++) {
+        size_t i = l / Constants::mapSize;
+        size_t j = l % Constants::mapSize;
+
+        float factor;
+        if (realFood) {
+            factor = std::log10(foodMap[j + i * Constants::mapSize] / std::log10(max) + 1);
+        }
+        else {
+            factor = foodMap[j + i * Constants::mapSize] / Constants::FinitialMapFood;
+        }
+        factor = std::max(0.0f,std::min(1.0f, factor));
         sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
         backFood[(j + i * Constants::mapSize) * 4].color = Color;
         backFood[(j + i * Constants::mapSize) * 4 + 1].color = Color;
@@ -89,19 +107,6 @@ void RenderManager::RenderLoop() {
 
     while (Window.isOpen()) {
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            CameraPosition.y -= 2.0f;
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            CameraPosition.x -= 2.0f;
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            CameraPosition.y += 2.0f;
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            CameraPosition.x += 2.0f;
-        }
-
         LastCameraPosition = CameraPosition;
 
         sf::Event event_;
@@ -135,6 +140,19 @@ void RenderManager::RunEvent(sf::Event Event) {
     if (Event.type == sf::Event::Closed)
         Window.close();
 
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+        CameraPosition.y -= 2.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+        CameraPosition.x -= 2.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+        CameraPosition.y += 2.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+        CameraPosition.x += 2.0f;
+    }
+
     if (Event.type == sf::Event::MouseWheelMoved) {
         if (Event.mouseWheel.delta > 0) FieldOfView++;
         if (Event.mouseWheel.delta < 0) FieldOfView--;
@@ -146,6 +164,9 @@ void RenderManager::RunEvent(sf::Event Event) {
         sf::Vector2f worldPos = Window.mapPixelToCoords(pixelPos) + CameraPosition;
 
         cursorPos = sf::Vector2i((int)(worldPos.x + Constants::mapSize/2), (int)(worldPos.y + Constants::mapSize / 2));
+        
+        if (cursorPos.x < 0 || cursorPos.y >= Constants::mapSize || cursorPos.y < 0 || cursorPos.y >= Constants::mapSize) return;
+
         if (SimulationToRender.getSpecieMap()[cursorPos.y + cursorPos.x * Constants::mapSize] != NULL_ID) {
             int a = 9;
             std::async([&]() {
@@ -165,7 +186,7 @@ void RenderManager::RunEvent(sf::Event Event) {
 
                 std::cout << '\n';
 
-                std::cout << "Food level: " << agent.food << '\n';
+                std::cout << "Food level: " << agent.food.toFloat() << '\n';
                 std::cout << "Current sigal: " << SimulationToRender.getSignalMap()[cursorPos.y + cursorPos.x * Constants::mapSize] << "\n";
 
                 std::cout << "Generation: " << agent.generation << "\n";
@@ -182,5 +203,7 @@ void RenderManager::RunEvent(sf::Event Event) {
     if (Event.type == sf::Event::KeyPressed) {
         if (Event.key.code == sf::Keyboard::O) SignalMapMode = !SignalMapMode;
         if (Event.key.code == sf::Keyboard::P) SimulationToRender.togglePause();
+        if (Event.key.code == sf::Keyboard::I) paused = !paused;
+        if (Event.key.code == sf::Keyboard::U) realFood = !realFood;
     }
 }

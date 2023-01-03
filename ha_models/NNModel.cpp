@@ -1,5 +1,7 @@
 #include "NNModel.hpp"
 
+#include <string>
+
 NNModel::NNModel(){
 }
 
@@ -11,7 +13,7 @@ void NNModel::addLayer(Layer* layer) {
 	if (!internalAlloc) layer->disableDefInternalAlloc();
 	layer->setPool(poolSize);
 	layers.push_back(layer);
-	variableCount += layer->getParamCount();
+	paramCount += layer->getParamCount();
 	stateCount += layer->getStateCount();
 }
 
@@ -46,7 +48,7 @@ void NNModel::randomizeUniform(CurandManager& curandManager) {
 	for (int i = 0; i < layerCount(); i++) layers[i]->rndParams(curandManager);
 }
 
-void NNModel::loadModel(Tensor variables[]) {
+void NNModel::setModelParams(Tensor variables[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
 		if (layers[i]->getParamCount() == 0) continue;
@@ -55,7 +57,7 @@ void NNModel::loadModel(Tensor variables[]) {
 	}
 }
 
-void NNModel::loadState(Tensor states[]) {
+void NNModel::setModelStates(Tensor states[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
 		if (layers[i]->getStateCount() == 0) continue;
@@ -64,7 +66,7 @@ void NNModel::loadState(Tensor states[]) {
 	}
 }
 
-void NNModel::fetchModel(Tensor variables[]) {
+void NNModel::getModelParams(Tensor variables[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
 		if (layers[i]->getParamCount() == 0) continue;
@@ -73,13 +75,39 @@ void NNModel::fetchModel(Tensor variables[]) {
 	}
 }
 
-void NNModel::fetchState(Tensor states[]) {
+void NNModel::getModelStates(Tensor states[]) {
 	size_t current = 0;
 	for (int i = 0; i < layerCount(); i++) {
 		if (layers[i]->getStateCount() == 0) continue;
 		layers[i]->fetchStates(&states[current]);
 		current += layers[i]->getStateCount();
 	}
+}
+
+void NNModel::loadModel(const char* path) {
+
+	std::string spath(path);
+
+	std::vector<Tensor> params(paramCount);
+
+	for (size_t i = 0; i < paramCount; i++) {
+		params[i].load((spath + "/" + std::to_string(i) + ".npy").c_str());
+	}
+
+	setModelParams(params.data());
+
+}
+
+void NNModel::loadState(const char* path) {
+	std::string spath(path);
+
+	std::vector<Tensor> states(paramCount);
+
+	for (size_t i = 0; i < paramCount; i++) {
+		states[i].load((spath + "/" + std::to_string(i) + ".npy").c_str());
+	}
+
+	setModelStates(states.data());
 }
 
 void NNModel::disableDefInternalAlloc() {

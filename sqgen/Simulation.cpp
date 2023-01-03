@@ -5,20 +5,7 @@
 #include "cuda_kernels/SqGenKernels.cuh"
 
 #include <algorithm>
-
-// SPECIE MAP - HOLDS THE SPECIE IDS AT A POSITION (USED FOR CHECKING IF A POSITION IS OCCUPTIDE BY AN AGENT)
-// 
-// INDEX MAP - HOLDS THE AGENT VECTOR INDEX FOR THE AGENT THAT IS AT A CERTAIN POSITION, POSITIONS THAT ARE NOT
-// OCCUPPIED CAN HAVE ANY VALUE
-//
-// SIGNAL MAP - HOLD THE SIGNAL OF THE AGENT AT A POSITION, EMPTY SLOTS HAVE A 0 SIGNAL
-//
-// WHEN AN AGENT NEEDS TO BE REMOVED ITS POSITION ON THE SPECIE AND SIGNAL MAP ARE SET TO 0 AND AFTER ALL THE
-// DECISION PROCESSING IS DONE THEY ARE REMOVED FROM THE AGENT VECTOR
-// TO REMOVE AN ELEMENT FROM THE AGENT VECTOR THE LAST ELEMENT IN THE VECTOR REPLACES THE ELEMENT THAT NEEDS TO BE
-// REMOVED AND THE VECTOR IS SHRUNK BY ONE, THAT SAID THE INDEX MAP ALSO HAS TO BE UPDATED AND AS I AM WRITTING THIS
-// I REALISE THAT THERE IS A PROBLEM IF BOTH THE ELEMENT AT THE END AND SOME ELEMENT IN THE MIDDLE NEEDS TO REMOVED
-// TODO: REPAIR THIS MESS
+#include <string>
 
 /*
 * 1) Sort by probability
@@ -37,27 +24,28 @@
 void Simulation::buildSIE(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::spicieSignalCount, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 5, Activation::TANH));
 	model.addLayer(new DenseLayer(5, Constants::visualLatentSize, Activation::TANH));
 }
 
 void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
-	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 5, Activation::TANH));
 	model.addLayer(new DenseLayer(5, 1, Activation::TANH));
 }
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
 	// Simple test arhitecture
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 40, Activation::TANH));
-	model.addLayer(new SimpleRecurrentLayer(40, 40, Activation::TANH, Activation::TANH));
-	model.addLayer(new DenseLayer(40, 40, Activation::TANH));
-	model.addLayer(new DenseLayer(40, 9, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new SimpleRecurrentLayer(10, 10, Activation::TANH, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 9, Activation::SOFTMAX));
 }
 
 Simulation::Simulation() {
@@ -118,7 +106,8 @@ Simulation::Simulation() {
 	specieSignalDict[NULL_ID] = nullSpecieSignal;
 
 	for (size_t i = 0; i < Constants::totalMapSize; i++) {
-		foodMap[i] = Constants::initialMapFood;
+		foodMap[i] = Constants::FinitialMapFood;
+		rationalMapFood[i] = Constants::initialMapFood;
 		specieMap[i] = NULL_ID;
 		indexMap[i] = 0;
 		signalMap[i] = 0;
@@ -131,6 +120,31 @@ Simulation::Simulation() {
 size_t Simulation::getAgentAt(Position pos) {
 	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return indexMap[pos.y + pos.x * Constants::mapSize];
+}
+
+void Simulation::addAgentFromSpecie(SpecieID sid, Position pos) {
+	if (agents.size() == Constants::totalMapSize) return;
+
+	AgentResourceID id = getAgentID();
+	SpecieID specieId = sid;
+
+	registerNewSpecieMember(specieId);
+
+	// Register and allocate specie and agent resources
+
+	SIE_Manager.registerAgent(id);
+	SG_Manager.registerAgent(id);
+	AP_Manager.registerAgent(id);
+
+	Agent newAgent = { specieId,id,pos,pos,0,Constants::initialFood };
+
+	agents.push_back(newAgent); // Agent vec
+	xPositions.push_back(newAgent.pos.x); // x vec
+	yPositions.push_back(newAgent.pos.y); // y vec
+	foodLevels.push_back(newAgent.food.toFloat());
+	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
+	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
+
 }
 
 void Simulation::addNewAgent() {
@@ -163,9 +177,8 @@ void Simulation::addNewAgent() {
 	agents.push_back(newAgent); // Agent vec
 	xPositions.push_back(newAgent.pos.x); // x vec
 	yPositions.push_back(newAgent.pos.y); // y vec
-	foodLevels.push_back(newAgent.food);
+	foodLevels.push_back(newAgent.food.toFloat());
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
-	size_t r = agents.size() - 1;
 	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
 }
@@ -233,7 +246,7 @@ bool Simulation::addAgent(Agent parent) {
 	agents.push_back(newAgent);
 	xPositions.push_back(newAgent.pos.x);
 	yPositions.push_back(newAgent.pos.y);
-	foodLevels.push_back(newAgent.food);
+	foodLevels.push_back(newAgent.food.toFloat());
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
@@ -242,6 +255,8 @@ bool Simulation::addAgent(Agent parent) {
 
 void Simulation::removeAgent(size_t index) {
 	Agent removed = agents[index];
+
+	spillFood(removed.pos, removed.food + (Constants::multiplyEnergyCost - Constants::initialFood));
 
 	// Non index based maps can be updated immediatly
 	signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;		 // These two make the agent invisible
@@ -271,6 +286,27 @@ void Simulation::removeAgent(size_t index) {
 	indexMap[pos.y + pos.x * Constants::mapSize] = index;
 }
 
+SpecieID Simulation::loadSpecie(const char* path) {
+	SpecieID id = getSpecieID();
+
+	specieConrelationMap[id] = NULL;
+
+	std::string spath(path);
+
+	Tensor specieSignal;
+
+	specieSignal.load((spath + "/signal.npy").c_str());
+
+	SIE_Manager.loadSpiecie((spath + "/SIE").c_str(),id);
+	AP_Manager.loadSpiecie((spath + "/AP").c_str(),id);
+	SG_Manager.loadSpiecie((spath + "/SG").c_str(), id);
+
+	specieInstaceCounter[id] = 0;
+	specieSignalDict[id] = specieSignal;
+
+	return SpecieID();
+}
+
 SpecieID Simulation::newSpiecie(size_t parent) {
 	SpecieID id = getSpecieID();
 
@@ -289,8 +325,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 
 		SG_Manager.registerNewSpiece(
 			id,
-			Constants::SG_InitDetails.initializedInputs,
-			Constants::SG_InitDetails.initializedHidden,
+		//	Constants::SG_InitDetails.initializedInputs,
+		//	Constants::SG_InitDetails.initializedHidden,
 			-Constants::SG_InitDetails.initAmplitude,
 			Constants::SG_InitDetails.initAmplitude
 		);
@@ -298,8 +334,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 		// AP init
 		AP_Manager.registerNewSpiece(
 			id,
-			Constants::AP_InitDetails.initializedInputs,
-			Constants::AP_InitDetails.initializedHidden,
+		//	Constants::AP_InitDetails.initializedInputs,
+		//	Constants::AP_InitDetails.initializedHidden,
 			-Constants::AP_InitDetails.initAmplitude,
 			Constants::AP_InitDetails.initAmplitude
 		);
@@ -402,13 +438,14 @@ void Simulation::gpuUploadMaps() {
 	gpuSpecieSignalMap.syncMap();
 }
 
-void Simulation::addToAgentFood(size_t index, float food) {
+void Simulation::addToAgentFood(size_t index, Rational food) {
 	agents[index].food += food;
-	foodLevels[index] += food;
+	foodLevels[index] = agents[index].food.toFloat();
 }
 
 void Simulation::setAgentPos(size_t index, Position newPos) {
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+	signalMap[newPos.y + newPos.x * Constants::mapSize] = signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize];
 	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 
 	agents[index].lastPos = agents[index].pos;
@@ -428,36 +465,65 @@ void Simulation::moveAgent(size_t index, Position delta) {
 	to.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	if (!positionOccupied(to)) {
-
-		addToAgentFood(index, -Constants::moveEnergyCost);
+		//if (Random::runProbability(0.2f)) {
+			spillFood(agents[index].pos, Constants::moveEnergyCost);
+			addToAgentFood(index, -Constants::moveEnergyCost);
+		//}
 		setAgentPos(index, to);
 	}
 }
 
+void Simulation::spillFood(Position pos, Rational amount) { 
+
+	setFoodAt(pos, getFoodAt(pos) + amount);
+
+	return;
+
+	for (int x = -Constants::spillRange; x <= Constants::spillRange; x++) {
+		for (int y = -Constants::spillRange; y <= Constants::spillRange; y++) {
+			Position delta = Position(x, y);
+			Position currentPos = pos + delta;
+			currentPos.wrapPositive(Constants::mapSize, Constants::mapSize);
+
+			setFoodAt(currentPos, getFoodAt(currentPos) + (amount * Constants::spillMap[
+				(delta.y + Constants::spillRange) + (delta.x + Constants::spillRange) * (Constants::spillRange * 2 + 1)
+			]));
+		}
+	}
+
+}
+
 void Simulation::eat(size_t index) {
 	Position pos = agents[index].pos;
-	if (foodMap[pos.y + pos.x * Constants::mapSize] >= Constants::eatAmount) {
+	if (getFoodAt(pos) >= Constants::eatAmount) {
 		addToAgentFood(index, Constants::eatAmount);
-		foodMap[pos.y + pos.x * Constants::mapSize] -= Constants::eatAmount;
+		setFoodAt(pos, getFoodAt(pos) - Constants::eatAmount);
 	}
 	else {
-		addToAgentFood(index, foodMap[pos.y + pos.x * Constants::mapSize]);
-		foodMap[pos.y + pos.x * Constants::mapSize] = 0;
+		addToAgentFood(index, getFoodAt(pos));
+		setFoodAt(pos, {0,1});
 	}
 }
 
 void Simulation::attack(size_t index) {
 
-	float totalFoodBalance = -Constants::attackEnergyCost;
+	Rational totalFoodBalance = {0,1};
+	addToAgentFood(index, -Constants::attackEnergyCost);
+	spillFood(agents[index].pos, Constants::attackEnergyCost);
 
 	for (int i = 0; i < 4; i++) {
 		Position pos = agents[index].pos + dirs[i];
 		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 		if (positionOccupied(pos)) {
 			size_t target = getAgentAt(pos);
-			totalFoodBalance += std::min(Constants::attackEnergyGain,agents[target].food);
-			// The max in this case is not really necessary but it's put for consistency
-			addToAgentFood(target, std::max(-Constants::attackEnergyGain, -agents[target].food));
+			if (Constants::attackEnergyGain <= agents[target].food) {
+				totalFoodBalance += Constants::attackEnergyGain;
+				addToAgentFood(target, -Constants::attackEnergyGain);
+			}
+			else {
+				totalFoodBalance += agents[target].food;
+				addToAgentFood(target, -agents[target].food);
+			}
 		}
 
 	}
@@ -467,9 +533,7 @@ void Simulation::attack(size_t index) {
 
 void Simulation::share(size_t index) {
 
-	float sharable = std::min(agents[index].food, Constants::shareEnergyTransfer);
-
-	size_t neighbours = 0;
+	Rational sharable = Constants::shareEnergyTransfer;
 
 	Position pos = agents[index].pos;
 
@@ -477,19 +541,11 @@ void Simulation::share(size_t index) {
 		for (int y = -Constants::shareRadius; y <= Constants::shareRadius; y++) {
 			Position current = Position(x, y);
 			Position relative = pos + current;
-			if (positionOccupied(relative)) neighbours++;
-		}
-	}
-
-	if (neighbours != 0) addToAgentFood(index, -sharable);
-
-	for (int x = -Constants::shareRadius; x <= Constants::shareRadius; x++) {
-		for (int y = -Constants::shareRadius; y <= Constants::shareRadius; y++) {
-			Position current = Position(x, y);
-			Position relative = pos + current;
 			if (positionOccupied(relative)) {
-				int n = getAgentAt(relative);
-				addToAgentFood(n, sharable / neighbours);
+				size_t n = getAgentAt(relative);
+				addToAgentFood(n, sharable);
+				addToAgentFood(index, -sharable);
+				if (agents[index].food.negative()) return;
 			}
 		}
 	}
@@ -562,6 +618,7 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	Tensor slicedAPSG = APSG_InputPool.slice(0, to - from);
 
 	// What the fuck
+
 	profiler.start(SG_PREDICT_ROUTINE);
 	Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
 	profiler.end(SG_PREDICT_ROUTINE);
@@ -576,20 +633,24 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	decisions.getValue(decisionOutput);
 	generatedSignals.getValue(generatedSignalsOutput);
 
+	for (int i = 0; i < 9; i++) actionTracker[i] = 0;
+
 	for (size_t i = 0; i < to - from; i++) {
 		Agent& agent = agents[from + i];
 		Position pos = agent.pos;
-		switch (Random::runProbabilityVector(&decisionOutput[i * 9], 9)) {
+		int action = Random::runProbabilityVector(&decisionOutput[i * 9], 9);
+		actionTracker[action]++;
+		switch (action) {
 		case EAT:
 			eat(from + i);
 			break;
 		case MULTIPLY:
 			if (agent.food >= Constants::multiplyEnergyCost) {
-				addToAgentFood(i, -Constants::multiplyEnergyCost);
-				addAgent(agent);
+				if (addAgent(agent)) addToAgentFood(i, -Constants::multiplyEnergyCost);
 			}
 			else {
-				agent.food = 0;
+				spillFood(agent.pos, agent.food);
+				addToAgentFood(i, -agent.food);
 			}
 			break;
 		case UP:
@@ -615,6 +676,7 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 			break;
 		}
 	}
+	//Rational r = agents[20].food;
 	profiler.end(DECISION_PROCESS_ROUTINE);
 }
 
@@ -644,10 +706,9 @@ void Simulation::update() {
 	}
 
 	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
-		if (agents[i].food <= 0 || agents[i].food > Constants::maximumFood) removeAgent(i);
+		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood) removeAgent(i);
 	}
 
-	for (size_t i = 0; i < Constants::totalMapSize; i++) if (foodMap[i] < Constants::initialMapFood)foodMap[i] += Constants::foodIncrease;
 	
 	// TODO: AAAAAAAAAAAAAAAAAAAa
 }
@@ -674,6 +735,8 @@ std::vector<Agent>& Simulation::getAgents() {
 
 void Simulation::printProfilerInfo() {
 
+	float ae = getAgenentEnergy();
+
 	std::cout << "Total agents: " << agents.size() << "\n";
 
 	std::cout << "Compile Time: " << profiler.get(COMPILE_ROUTINE) << " ms\n"
@@ -682,12 +745,63 @@ void Simulation::printProfilerInfo() {
 		<< "APSG Input: " << profiler.get(APSG_INPUT_ROUTINE) << " ms\n"
 		<< "AP Predict: " << profiler.get(AP_PREDICT_ROUTINE) << " ms\n"
 		<< "SG Predict: " << profiler.get(SG_PREDICT_ROUTINE) << " ms\n"
-		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n";
+		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n"
+		<< "Total simulation food: " << getTotalFood() << '\n'
+		<< "Agent energy: " <<ae << '\n'
+		<< "Energy per agent: " << ae/agents.size() << '\n'
+		<< "Actions: \n";
+
+	for (int i = 0; i < 9; i++) std::cout << (float)actionTracker[i] / agents.size() << '\n';
  
 }
 
 std::map<SpecieID, Tensor>& Simulation::getSignalDict() {
 	return specieSignalDict;
+}
+
+float Simulation::getTotalFood() {
+	Rational total = {0,1};
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		total += rationalMapFood[i];
+	}
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		total += agents[i].food + (Constants::multiplyEnergyCost - Constants::initialFood);
+	}
+
+	return total.toFloat();
+
+}
+
+Rational Simulation::getFoodAt(Position pos) {
+	return rationalMapFood[pos.y + pos.x * Constants::mapSize];
+}
+
+void Simulation::setFoodAt(Position pos, Rational r) {
+
+	rationalMapFood[pos.y + pos.x * Constants::mapSize] = r;
+
+	foodMap[pos.y + pos.x * Constants::mapSize] = r.toFloat();
+
+}
+
+void Simulation::restartFoodMap() {
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		foodMap[i] = Constants::FinitialMapFood;
+		rationalMapFood[i] = Constants::initialMapFood;
+	}
+}
+
+float Simulation::getAgenentEnergy() {
+
+	Rational total;
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		total += agents[i].food;
+	}
+
+	return total.toFloat();
 }
 
 void Simulation::togglePause() {

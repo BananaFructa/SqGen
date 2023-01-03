@@ -76,10 +76,21 @@ public:
 	*/
 	Tensor slice(size_t begin, size_t end);
 
+	/*
+	* @return A tensor with the same data but with axis of lenght one removed
+	*/
 	Tensor squeeze();
 
+	/*
+	* @brief Clamps all the values between a defined bound
+	* @param lower = Lower bound
+	* @param upper = Upper bound
+	*/
 	void clamp(TENSOR_TYPE lower, TENSOR_TYPE upper);
 
+	/*
+	* @brief Performs a deep copy on the input tensor
+	*/
 	void copyTo(Tensor& t);
 
 	/*
@@ -92,18 +103,41 @@ public:
 	*/
 	TensorMap_DEVICE getGpuMapPointer();
 
+	/*
+	* @brief Initializes with 0 all values from the tensor
+	*/
 	void initZero();
 
+	/*
+	* @brief Applies a function to each element of the tensor
+	* @param f = The function
+	*/
 	void functionPass(Func f);
 
+	/*
+	* @brief Summs all elements in the tensor and returns the result in sum
+	*/
 	void sumAllElements(Scalar sum);
 
+	/*
+	* @brief Summs all the elements in each sub-tensor defined by the indexing of the last dimension and return the results in the sums tensor
+	*/
 	void sumAllElementsAcrossDim(Tensor& sums);
 
+	/*
+	* @brief Normalizez all the elements in each sub-tensor defined by the indexing og the last dimesion
+	* @param sums = The tensor containing the sums across dimentions
+	*/
 	void normalizeAcrossDim(Tensor& sums);
 
+	/*
+	* @brief Normalizez the whole tensor
+	*/
 	void normalize(Scalar sum);
 
+	/*
+	* @brief Syncs the tensor map between cpu and gpu side
+	*/
 	void syncMap();
 
 	const OperationDetails<Tensor, Tensor> operator*(Tensor& t);
@@ -117,6 +151,18 @@ public:
 	void operator+=(const OperationDetails<Tensor, Tensor>& o);
 
 	void operator-=(const OperationDetails<Tensor, Tensor>& o);
+
+	/*
+	* @brief Saves the tensor in a .npy file
+	* @param path = The file path where to save the tensor
+	*/
+	void save(const char* path);
+
+	/*
+	* @brief Load the tensor from a .npy file
+	* @param path = The file path from where to load the tensor
+	*/
+	void load(const char* path);
 
 protected:
 

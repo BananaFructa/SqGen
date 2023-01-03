@@ -39,14 +39,6 @@ Size SimpleRecurrentLayer::getOutputSize() {
 	return Size((size_t)2,(size_t)1,size);
 }
 
-size_t SimpleRecurrentLayer::getParamCount() {
-	return 5;
-}
-
-size_t SimpleRecurrentLayer::getStateCount() {
-	return 1;
-}
-
 unsigned short SimpleRecurrentLayer::stepCount() {
 	return 6;
 }
@@ -100,28 +92,16 @@ void SimpleRecurrentLayer::rndParams(CurandManager& curandManager) {
 	curandManager.randomizeTensorUniform(biasesOutput, -1, 1);
 }
 
+size_t SimpleRecurrentLayer::getParamCount() {
+	return 5;
+}
+
 void SimpleRecurrentLayer::loadParams(Tensor params[]) {
 	weightsInput = params[0];
 	weightsHiddenPast = params[1];
 	weightsHiddenPresent = params[2];
 	biasesHidden = params[3];
 	biasesOutput = params[4];
-}
-
-void SimpleRecurrentLayer::loadState(Tensor state[]) {
-	hiddenLayer = state[0];
-}
-
-void SimpleRecurrentLayer::getParamsSizes(Size sizes[]) {
-	sizes[0] = Size((size_t)2, inputSize, size);
-	sizes[1] = Size((size_t)2, 1, size);
-	sizes[2] = Size((size_t)2, 1, size);
-	sizes[3] = Size((size_t)2, 1, size);
-	sizes[4] = Size((size_t)2, 1, size);
-}
-
-void SimpleRecurrentLayer::getStateSizes(Size sizes[]) {
-	sizes[0] = Size((size_t)2, (size_t)1, size);
 }
 
 void SimpleRecurrentLayer::fetchParams(Tensor params[]) {
@@ -132,8 +112,28 @@ void SimpleRecurrentLayer::fetchParams(Tensor params[]) {
 	params[4] = biasesOutput;
 }
 
+void SimpleRecurrentLayer::getParamsSizes(Size sizes[]) {
+	sizes[0] = Size((size_t)2, inputSize, size);
+	sizes[1] = Size((size_t)2, 1, size);
+	sizes[2] = Size((size_t)2, 1, size);
+	sizes[3] = Size((size_t)2, 1, size);
+	sizes[4] = Size((size_t)2, 1, size);
+}
+
+size_t SimpleRecurrentLayer::getStateCount() {
+	return 1;
+}
+
+void SimpleRecurrentLayer::loadState(Tensor state[]) {
+	hiddenLayer = state[0];
+}
+
 void SimpleRecurrentLayer::fetchStates(Tensor states[]) {
 	states[0] = hiddenLayer;
+}
+
+void SimpleRecurrentLayer::getStateSizes(Size sizes[]) {
+	sizes[0] = Size((size_t)2, (size_t)1, size);
 }
 
 Tensor SimpleRecurrentLayer::getValue() {

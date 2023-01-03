@@ -12,7 +12,7 @@ public:
 
 	size_t poolSize = 0;
 
-	size_t variableCount = 0;
+	size_t paramCount = 0;
 	size_t stateCount = 0;
 
 	NNModel();
@@ -27,10 +27,12 @@ public:
 
 	void randomizeUniform(CurandManager& curandManager);
 
-	void loadModel(Tensor variables[]);
-	void loadState(Tensor states[]);
-	void fetchModel(Tensor variables[]);
-	void fetchState(Tensor states[]);
+	void setModelParams(Tensor variables[]);
+	void setModelStates(Tensor states[]);
+	void getModelParams(Tensor variables[]);
+	void getModelStates(Tensor states[]);
+	void loadModel(const char* path);
+	void loadState(const char* path);
 
 	void disableDefInternalAlloc();
 
