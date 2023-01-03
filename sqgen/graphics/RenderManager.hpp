@@ -68,7 +68,7 @@ private:
 	bool SignalMapMode;
 
 	bool paused = false;
-
+	bool realFood = false;
 
 public:
 

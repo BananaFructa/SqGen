@@ -5,20 +5,7 @@
 #include "cuda_kernels/SqGenKernels.cuh"
 
 #include <algorithm>
-
-// SPECIE MAP - HOLDS THE SPECIE IDS AT A POSITION (USED FOR CHECKING IF A POSITION IS OCCUPTIDE BY AN AGENT)
-// 
-// INDEX MAP - HOLDS THE AGENT VECTOR INDEX FOR THE AGENT THAT IS AT A CERTAIN POSITION, POSITIONS THAT ARE NOT
-// OCCUPPIED CAN HAVE ANY VALUE
-//
-// SIGNAL MAP - HOLD THE SIGNAL OF THE AGENT AT A POSITION, EMPTY SLOTS HAVE A 0 SIGNAL
-//
-// WHEN AN AGENT NEEDS TO BE REMOVED ITS POSITION ON THE SPECIE AND SIGNAL MAP ARE SET TO 0 AND AFTER ALL THE
-// DECISION PROCESSING IS DONE THEY ARE REMOVED FROM THE AGENT VECTOR
-// TO REMOVE AN ELEMENT FROM THE AGENT VECTOR THE LAST ELEMENT IN THE VECTOR REPLACES THE ELEMENT THAT NEEDS TO BE
-// REMOVED AND THE VECTOR IS SHRUNK BY ONE, THAT SAID THE INDEX MAP ALSO HAS TO BE UPDATED AND AS I AM WRITTING THIS
-// I REALISE THAT THERE IS A PROBLEM IF BOTH THE ELEMENT AT THE END AND SOME ELEMENT IN THE MIDDLE NEEDS TO REMOVED
-// TODO: REPAIR THIS MESS
+#include <string>
 
 /*
 * 1) Sort by probability
@@ -133,6 +120,31 @@ Simulation::Simulation() {
 size_t Simulation::getAgentAt(Position pos) {
 	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return indexMap[pos.y + pos.x * Constants::mapSize];
+}
+
+void Simulation::addAgentFromSpecie(SpecieID sid, Position pos) {
+	if (agents.size() == Constants::totalMapSize) return;
+
+	AgentResourceID id = getAgentID();
+	SpecieID specieId = sid;
+
+	registerNewSpecieMember(specieId);
+
+	// Register and allocate specie and agent resources
+
+	SIE_Manager.registerAgent(id);
+	SG_Manager.registerAgent(id);
+	AP_Manager.registerAgent(id);
+
+	Agent newAgent = { specieId,id,pos,pos,0,Constants::initialFood };
+
+	agents.push_back(newAgent); // Agent vec
+	xPositions.push_back(newAgent.pos.x); // x vec
+	yPositions.push_back(newAgent.pos.y); // y vec
+	foodLevels.push_back(newAgent.food.toFloat());
+	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId; // specieMap
+	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
+
 }
 
 void Simulation::addNewAgent() {
@@ -272,6 +284,27 @@ void Simulation::removeAgent(size_t index) {
 
 	Position pos = agents[index].pos;
 	indexMap[pos.y + pos.x * Constants::mapSize] = index;
+}
+
+SpecieID Simulation::loadSpecie(const char* path) {
+	SpecieID id = getSpecieID();
+
+	specieConrelationMap[id] = NULL;
+
+	std::string spath(path);
+
+	Tensor specieSignal;
+
+	specieSignal.load((spath + "/signal.npy").c_str());
+
+	SIE_Manager.loadSpiecie((spath + "/SIE").c_str(),id);
+	AP_Manager.loadSpiecie((spath + "/AP").c_str(),id);
+	SG_Manager.loadSpiecie((spath + "/SG").c_str(), id);
+
+	specieInstaceCounter[id] = 0;
+	specieSignalDict[id] = specieSignal;
+
+	return SpecieID();
 }
 
 SpecieID Simulation::newSpiecie(size_t parent) {
@@ -432,8 +465,10 @@ void Simulation::moveAgent(size_t index, Position delta) {
 	to.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	if (!positionOccupied(to)) {
-		spillFood(agents[index].pos, Constants::moveEnergyCost);
-		addToAgentFood(index, -Constants::moveEnergyCost);
+		//if (Random::runProbability(0.2f)) {
+			spillFood(agents[index].pos, Constants::moveEnergyCost);
+			addToAgentFood(index, -Constants::moveEnergyCost);
+		//}
 		setAgentPos(index, to);
 	}
 }
@@ -583,6 +618,7 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	Tensor slicedAPSG = APSG_InputPool.slice(0, to - from);
 
 	// What the fuck
+
 	profiler.start(SG_PREDICT_ROUTINE);
 	Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
 	profiler.end(SG_PREDICT_ROUTINE);
@@ -669,8 +705,6 @@ void Simulation::update() {
 		runAPSGAndProcessDecisions(current, current + remaining);
 	}
 
-	Rational r = { 0,1 };
-
 	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
 		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood) removeAgent(i);
 	}
@@ -701,6 +735,8 @@ std::vector<Agent>& Simulation::getAgents() {
 
 void Simulation::printProfilerInfo() {
 
+	float ae = getAgenentEnergy();
+
 	std::cout << "Total agents: " << agents.size() << "\n";
 
 	std::cout << "Compile Time: " << profiler.get(COMPILE_ROUTINE) << " ms\n"
@@ -711,6 +747,8 @@ void Simulation::printProfilerInfo() {
 		<< "SG Predict: " << profiler.get(SG_PREDICT_ROUTINE) << " ms\n"
 		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n"
 		<< "Total simulation food: " << getTotalFood() << '\n'
+		<< "Agent energy: " <<ae << '\n'
+		<< "Energy per agent: " << ae/agents.size() << '\n'
 		<< "Actions: \n";
 
 	for (int i = 0; i < 9; i++) std::cout << (float)actionTracker[i] / agents.size() << '\n';
@@ -753,6 +791,17 @@ void Simulation::restartFoodMap() {
 		foodMap[i] = Constants::FinitialMapFood;
 		rationalMapFood[i] = Constants::initialMapFood;
 	}
+}
+
+float Simulation::getAgenentEnergy() {
+
+	Rational total;
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		total += agents[i].food;
+	}
+
+	return total.toFloat();
 }
 
 void Simulation::togglePause() {

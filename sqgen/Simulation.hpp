@@ -192,7 +192,7 @@ public:
 	std::map<SpecieID, SpecieID> specieConrelationMap;
 
 	// Allocator for specie signals
-	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(Size(1, Constants::spicieSignalCount)));
+	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(1, Constants::spicieSignalCount));
 
 //  =======================================================================
 
@@ -211,18 +211,6 @@ public:
 
 	size_t actionTracker[9] = {0};
 
-public:
-
-	Simulation();
-
-	void gpuUploadMaps();
-
-	size_t getAgentAt(Position pos);
-
-	void addNewAgent();
-	bool addAgent(Agent parent);
-	void removeAgent(size_t index);
-
 	void eat(size_t index);
 	void attack(size_t index);
 	void share(size_t index);
@@ -232,6 +220,20 @@ public:
 	bool positionOccupied(Position pos);
 	void spillFood(Position pos, Rational amount);
 
+public:
+
+	Simulation();
+
+	void gpuUploadMaps();
+
+	size_t getAgentAt(Position pos);
+
+	void addAgentFromSpecie(SpecieID id, Position pos);
+	void addNewAgent();
+	bool addAgent(Agent parent);
+	void removeAgent(size_t index);
+
+	SpecieID loadSpecie(const char* path);
 	SpecieID newSpiecie(size_t parent);
 	void registerNewSpecieMember(SpecieID specie);
 	void eraseSpecieMember(SpecieID specie);
@@ -260,4 +262,5 @@ public:
 	Rational getFoodAt(Position pos);
 	void setFoodAt(Position pos, Rational r);
 	void restartFoodMap();
+	float getAgenentEnergy();
 };

@@ -1,5 +1,6 @@
 #include "NNAgentModelManager.hpp"
 
+#include <string>
 #include <ppl.h>
 
 Tensor* NNAgentModelManager::getVariableSet() {
@@ -41,16 +42,16 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 	this->curandManager = manager;
 	this->supermodel = model;
 	this->poolSize = model.poolSize;
-	this->variableCount = model.variableCount;
+	this->paramCount = model.paramCount;
 	this->stateCount = model.stateCount;
-	this->hasVariables = variableCount > 0;
+	this->hasVariables = paramCount > 0;
 	this->hasStates = stateCount > 0;
 
 	// Reserve vecotr for model variable tensors
-	variableSizes = std::vector<Size>(model.variableCount);
+	variableSizes = std::vector<Size>(model.paramCount);
 	stateSizes = std::vector<Size>(model.stateCount);
 
-	compiledData = std::vector<ReferenceMappedTensor>(model.variableCount);
+	compiledData = std::vector<ReferenceMappedTensor>(model.paramCount);
 	compiledState = std::vector<ReferenceMappedTensor>(model.stateCount);
 
 	// Get layer vector
@@ -84,7 +85,7 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 	inputSize = Size(layers[0]->getInputSize());
 	inputSize.extend(poolSize);
 
-	for (int i = 0; i < model.variableCount; i++) {
+	for (int i = 0; i < model.paramCount; i++) {
 		Size s = Size(variableSizes[i]);
 		s.extend(poolSize);
 		compiledData[i] = ReferenceMappedTensor(s);
@@ -103,7 +104,7 @@ void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t spec
 	if (hasVariables) {
 		concurrency::parallel_for((size_t)0, agentCount, [&](size_t i) {
 			for (size_t r = 0; r < specieRepeat; r++) {
-				for (size_t j = 0; j < supermodel.variableCount; j++) {
+				for (size_t j = 0; j < supermodel.paramCount; j++) {
 					Agent a = agents[i];
 					compiledData[j].setRef(i * specieRepeat + r, agentModelVariables[agents[i].specieId][j]);
 				}
@@ -119,11 +120,11 @@ void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t spec
 		});
 	}
 
-	std::vector<Tensor> slicedData(supermodel.variableCount);
+	std::vector<Tensor> slicedData(supermodel.paramCount);
 	std::vector<Tensor> slicedState(supermodel.stateCount);
 
 	if (hasVariables) {
-		for (int i = 0; i < supermodel.variableCount; i++) {
+		for (int i = 0; i < supermodel.paramCount; i++) {
 			compiledData[i].syncMap();
 			slicedData[i] = compiledData[i].slice(0, agentCount * specieRepeat);
 		}
@@ -136,8 +137,8 @@ void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t spec
 		}
 	}
 
-	if (hasVariables) supermodel.loadModel(&slicedData[0]);
-	if (hasStates) supermodel.loadState(&slicedState[0]);
+	if (hasVariables) supermodel.setModelParams(&slicedData[0]);
+	if (hasStates) supermodel.setModelStates(&slicedState[0]);
 
 }
 
@@ -180,7 +181,7 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, float low, float high) 
 
 	Tensor* tensorData = getVariableSet();
 
-	for (size_t i = 0; i < variableCount; i++) {
+	for (size_t i = 0; i < paramCount; i++) {
 
 		curandManager.randomizeTensorUniform(tensorData[i], low, high);
 
@@ -195,11 +196,11 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, size_t inputUse, size_t
 
 	Tensor* tensorData = getVariableSet();
 
-	for (size_t i = 0; i < variableCount; i++) {
+	for (size_t i = 0; i < paramCount; i++) {
 
 		Tensor sliced;
 
-		if (i < variableCount - outputParamCount) {
+		if (i < paramCount - outputParamCount) {
 			sliced = tensorData[i].slice(0, hiddenUse);
 			tensorData[i].slice(hiddenUse, tensorData[i].size.last()).initZero();
 		}
@@ -251,11 +252,21 @@ void NNAgentModelManager::registerAgent(AgentResourceID id) {
 
 }
 
-void NNAgentModelManager::loadSpiecie(SpecieID id, Tensor values[]) {
-	// TODO: Implementation
+void NNAgentModelManager::loadSpiecie(const char* path, SpecieID id) {
+	if (!hasVariables) return;
+
+	std::string spath(path);
+
+	Tensor* tensorData = getVariableSet();
+
+	for (size_t i = 0; i < paramCount; i++) {
+		tensorData[i].load((spath + "/" + std::to_string(i) + ".npy").c_str());
+	}
+
+	agentModelVariables[id] = tensorData;
 }
 
-void NNAgentModelManager::loadState(Agent id, Tensor states[]) {
+void NNAgentModelManager::loadState(const char* path, AgentResourceID id) {
 	// TODO: Implementation
 }
 

@@ -83,7 +83,7 @@ sf::Color randomAgentColor() {
     return sf::Color(Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60);
 }
 
-const int colorChangeAmplitude = 51;
+const int colorChangeAmplitude = 7;
 
 int mutateChannel(int c) {
     if (c >= 255 - (colorChangeAmplitude - 1) / 2) {

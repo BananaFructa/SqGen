@@ -1,4 +1,5 @@
 #include "Tensor.hpp"
+#include "../libs/npy.hpp"
 
 // Too many paramters so these are some functions to wrap everything up
 
@@ -377,4 +378,36 @@ void Tensor::operator-=(const OperationDetails<Tensor, Tensor>& o) {
 
 void Tensor::setMap(TensorMap_HOST m) {
 	copyMapFromHost(m, gpuTensorMap, mapSize);
+}
+
+void Tensor::save(const char* path) {
+
+	std::vector<unsigned long> shape(size.dim);
+	std::vector<TENSOR_TYPE> data(size.size);
+
+	for (size_t i = 0; i < size.dim; i++) shape[i] = (unsigned long)size.sizes[i];
+
+	getValue(data.data());
+
+	npy::SaveArrayAsNumpy(path, true, (unsigned long)size.dim, shape.data(), data);
+
+}
+
+void Tensor::load(const char* path) {
+
+	std::vector<unsigned long> shape;
+	std::vector<TENSOR_TYPE> data;
+
+	npy::LoadArrayFromNumpy(path, shape, data);
+
+	std::vector<size_t> shapeST(shape.size());
+
+	for (size_t i = 0; i < shape.size(); i++) shapeST[i] = (size_t)shape[i];
+
+	Size size(shapeST.size(), shapeST.data());
+
+	init(size);
+
+	setValue(data.data());
+
 }

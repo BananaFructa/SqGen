@@ -37,8 +37,8 @@ __global__ void processSIEInputs_kernel(
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
 			for (size_t j = 0; j < signalSize; j++) {
-				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * ((logic & USE_SECOND) >> 5);
-				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * ((logic & USE_FIRST) >> 4);
+				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5);
+				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4);
 			}
 		}
 
@@ -102,8 +102,8 @@ __global__ void processAPSGInputs_kernel(
 			x = (x + mapSize) % mapSize;
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
-			inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * ((logic & USE_SECOND) >> 5);
-			inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * ((logic & USE_FIRST) >> 4);
+			inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * (float)((logic & USE_SECOND) >> 5);
+			inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * (float)((logic & USE_FIRST) >> 4);
 		}
 
 	}

@@ -6,17 +6,12 @@
 
 void RenderManager::updateRenderData() {
 
-    if (paused) return;
+    float max = 0;
 
     float* foodMap = SimulationToRender.getFoodMap();
-    float* signalMap = SimulationToRender.getSignalMap();
+
     SpecieID* specieMap = SimulationToRender.getSpecieMap();
-
-    sf::VertexArray& backFood = buffer.getBackFoodMap();
-    sf::VertexArray& backAgent = buffer.getBackAgentMap();
-
-    //concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
-    for (size_t l = 0;l < Constants::totalMapSize;l++) {
+    for (size_t l = 0; l < Constants::totalMapSize; l++) {
         size_t i = l / Constants::mapSize;
         size_t j = l % Constants::mapSize;
         {
@@ -29,8 +24,28 @@ void RenderManager::updateRenderData() {
                 colorPalette[id] = color;
             }
         }
+        max = std::max(foodMap[j + i * Constants::mapSize], max);
+    }
 
-        float factor = foodMap[j + i * Constants::mapSize] / Constants::initialMapFood.toFloat();
+    if (paused) return;
+
+    float* signalMap = SimulationToRender.getSignalMap();
+
+    sf::VertexArray& backFood = buffer.getBackFoodMap();
+    sf::VertexArray& backAgent = buffer.getBackAgentMap();
+
+    //concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
+    for (size_t l = 0;l < Constants::totalMapSize;l++) {
+        size_t i = l / Constants::mapSize;
+        size_t j = l % Constants::mapSize;
+
+        float factor;
+        if (realFood) {
+            factor = std::log10(foodMap[j + i * Constants::mapSize] / std::log10(max) + 1);
+        }
+        else {
+            factor = foodMap[j + i * Constants::mapSize] / Constants::FinitialMapFood;
+        }
         factor = std::max(0.0f,std::min(1.0f, factor));
         sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
         backFood[(j + i * Constants::mapSize) * 4].color = Color;
@@ -189,5 +204,6 @@ void RenderManager::RunEvent(sf::Event Event) {
         if (Event.key.code == sf::Keyboard::O) SignalMapMode = !SignalMapMode;
         if (Event.key.code == sf::Keyboard::P) SimulationToRender.togglePause();
         if (Event.key.code == sf::Keyboard::I) paused = !paused;
+        if (Event.key.code == sf::Keyboard::U) realFood = !realFood;
     }
 }

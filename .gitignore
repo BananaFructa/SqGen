@@ -4,3 +4,6 @@ x64
 *.user
 libs
 *.dll
+codependence_build
+codependence_train/*
+!codependence_train/*.py

@@ -23,7 +23,7 @@ private:
 	bool hasStates = false;
 
 	size_t poolSize = 0;
-	size_t variableCount = 0;
+	size_t paramCount = 0;
 	size_t stateCount = 0;
 
 	size_t outputParamCount = 0;
@@ -65,8 +65,8 @@ public:
 	void eraseAgent(AgentResourceID id);
 	void registerAgent(AgentResourceID id);
 
-	void loadSpiecie(SpecieID id, Tensor values[]);
-	void loadState(Agent id, Tensor states[]);
+	void loadSpiecie(const char* path, SpecieID id);
+	void loadState(const char* path, AgentResourceID id);
 
 	void cleanup();
 	void free();
