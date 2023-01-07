@@ -83,4 +83,9 @@ struct Rational {
 		return a < 0;
 	}
 
+	void multiply(long long m) {
+		a *= m;
+		b *= m;
+	}
+
 };

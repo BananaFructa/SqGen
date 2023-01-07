@@ -11,6 +11,7 @@
 
 __global__ void processSIEInputs_kernel(
 	Array_DEVICE<short> logicMap,
+	Array_DEVICE<float> distanceMap,
 	TensorMap_DEVICE specieSignalMap, // Tensor which holds the specie signal that is present at each map position (signal size)
 	Array_DEVICE<int> xPositionSet, // X positions of the agents
 	Array_DEVICE<int> yPositionSet, // Y position of the agents
@@ -37,8 +38,8 @@ __global__ void processSIEInputs_kernel(
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
 			for (size_t j = 0; j < signalSize; j++) {
-				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5);
-				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4);
+				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5) * distanceMap[i];
+				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4) * distanceMap[i];
 			}
 		}
 
@@ -57,7 +58,7 @@ __global__ void processSIEInputs_kernel(
 
 			for (size_t i = 0; i < signalSize; i++) {
 				//                             V and here
-				inputPool[(indexInModelInput + j) * signalSize + i] /= ((_max - 1) * biggerThan1 + 1);
+				//inputPool[(indexInModelInput + j) * signalSize + i] /= ((_max - 1) * biggerThan1 + 1);
 			}
 		}
 
@@ -85,7 +86,7 @@ __global__ void processAPSGInputs_kernel(
 		// Current agent food
 		inputPool[t * 10 + 0] = foodLevels[t] / Constants::FmaximumFood;
 		// Food value of the tile
-		inputPool[t * 10 + 1] = min(1.0f,max(0.0f,foodMap[cy + cx * mapSize] / Constants::FinitialMapFood));
+		inputPool[t * 10 + 1] = max(0.0f,foodMap[cy + cx * mapSize]);
 
 		// Copy the visual data from the SIE output
 		for (size_t i = 0; i < 4; i++) {
@@ -112,6 +113,7 @@ __global__ void processAPSGInputs_kernel(
 
 void SqGenKernels::processSIEInputs(
 	Array_DEVICE<short> logicMap,
+	Array_DEVICE<float> distanceMap,
 	TensorMap_DEVICE specieSignalMap,
 	Array_DEVICE<int> xPositionSet,
 	Array_DEVICE<int> yPositionSet,
@@ -124,7 +126,7 @@ void SqGenKernels::processSIEInputs(
 	dim3 threadSize(256);
 	dim3 blockSize((agentCount + threadSize.x - 1) / threadSize.x);
 
-	processSIEInputs_kernel <<< blockSize, threadSize>>> (logicMap, specieSignalMap, xPositionSet, yPositionSet, inputPool, viewRange, mapSize, signalSize, agentCount);
+	processSIEInputs_kernel <<< blockSize, threadSize>>> (logicMap,distanceMap, specieSignalMap, xPositionSet, yPositionSet, inputPool, viewRange, mapSize, signalSize, agentCount);
 }
 
 void SqGenKernels::processAPSGInputs(

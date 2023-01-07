@@ -44,7 +44,7 @@ void RenderManager::updateRenderData() {
             factor = std::log10(foodMap[j + i * Constants::mapSize] / std::log10(max) + 1);
         }
         else {
-            factor = foodMap[j + i * Constants::mapSize] / Constants::FinitialMapFood;
+            factor = foodMap[j + i * Constants::mapSize];// / Constants::FinitialMapFood;
         }
         factor = std::max(0.0f,std::min(1.0f, factor));
         sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
@@ -205,5 +205,6 @@ void RenderManager::RunEvent(sf::Event Event) {
         if (Event.key.code == sf::Keyboard::P) SimulationToRender.togglePause();
         if (Event.key.code == sf::Keyboard::I) paused = !paused;
         if (Event.key.code == sf::Keyboard::U) realFood = !realFood;
+        if (Event.key.code == sf::Keyboard::Y) SimulationToRender.step = true;
     }
 }

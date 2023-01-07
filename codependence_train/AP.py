@@ -91,7 +91,7 @@ A_3_1    = genInvInput(genInvInput(genInvInput(  [[0,0,     0,0,0,B_CLOSE,  0,0,
 A_3_2    = genInvInput(genInvInput(genInvInput(genInvInput(  [[0,0,     B_FAR,0,0,B_FAR,        0,0,0,0]]    ,0,0,1),1,0,1),6,-1,1),9,-1,1) # change sig
 
 #                                                              | |                                |   |
-A_3_3    = genInvInput(genInvInput(genInvInput(genInvInput(  [[0,0,      0,B_FAR,0,B_FAR,       0,0,0,0]]  ,0,0,1),1,0,1),7,-1,1),9,-1,1) # change sig
+A_3_3    = genInvInput(genInvInput(genInvInput(genInvInput(  [[0,0,      0,B_FAR,0,B_FAR,       0,0,0,0]]  ,0,0,1),1,0,1),7,-1,1),9,0,1) # change sig
 
 #                                       | |
 A_4      = genInvInput(genInvInput(   [[0,0,    0,0,0,B_FAR,    0,0,0,-1]]   ,0,0,1),1,0,1) # left
@@ -144,9 +144,9 @@ B_3      = genInvInput(genInvInput(genInvInput([[0,0,       B_CLOSE_A_FAR,A_FAR,
 #                                                                                 | |        | |       |
 B_4      = genInvInputVec(genInvInputVec(genInvInputVec(genInvInput(genInvInput([[0,0,       0,0,A_FAR,0,        0,0,0,0]],0,0,1),1,0,1),2,[-1,1]),3,[-1,1]),5,[-1,1]) # attack
 #                                    | |
-B_5      = genInvInput(genInvInput([[0,0,        A_FAR,0,A_FAR,0,        0,0,0,0]],0,0,1),1,0,1) # left
+B_5      = genInvInputVec(genInvInput(genInvInput([[0,0,        A_FAR,0,A_FAR,0,        0,0,0,0]],0,0,1),1,0,1),3,[0,-0.75,0.5,-0.5,0.75]) # left
 #                                    | |
-B_6      = genInvInput(genInvInput([[0,0,        0,A_FAR,A_FAR,0,        0,0,0,0]],0,0,1),1,0,1) # right
+B_6      = genInvInputVec(genInvInput(genInvInput([[0,0,        0,A_FAR,A_FAR,0,        0,0,0,0]],0,0,1),1,0,1),2,[0,-0.75,-0.5,0.75]) # right
 #                                    | |
 B_7      = genInvInput(genInvInput([[0,0,       0,0,A_CLOSE,0,       0,0,0,0]],0,0,1),1,0,1) # down
 #                                    | |
@@ -185,7 +185,7 @@ def trainAAP():
     model = buildAPModel()
     optimizer = getOptimizer()
     lastLoss = 1
-    while lastLoss > 0.00022:
+    while lastLoss > 0.000001:
         with tf.GradientTape() as tape:
             prediction = model(A_DATA)
             loss = tf.keras.losses.MSE(A_LABELS,prediction)
@@ -200,7 +200,7 @@ def trainBAP():
     model = buildAPModel()
     optimizer = getOptimizer()
     lastLoss = 1
-    while lastLoss > 0.00001:
+    while lastLoss > 0.000001:
         with tf.GradientTape() as tape:
             prediction = model(B_DATA)
             loss = tf.keras.losses.MSE(B_LABELS,prediction)
@@ -212,7 +212,5 @@ def trainBAP():
     model.save("B_AP")
 
 np.set_printoptions(suppress=True)
-trainAAP()
+#trainAAP()
 trainBAP()
-#modelAP = tf.keras.models.load_model("A_AP")
-#print(modelAP(np.array([0.3,0.5,   0,0,0,-0.5,  0,0,0,0.5]).reshape((1,10,1))))

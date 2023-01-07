@@ -166,6 +166,7 @@ public:
 	// Structure of a short from the array 
 	// | rest unused | 1 bit use second | 1 bit use first | 2 bits to indicate the second direction | 2 bits to indicate the direction |
 	Array<short> logicMapObserveRange = Array<short>(Constants::agentObserveRangeTotal);
+	Array<float> logicMapDistanceRange = Array<float>(Constants::agentObserveRangeTotal);
 	// ======
 
 	// Matrix which contain the food values of each tile
@@ -205,9 +206,12 @@ public:
 
 	Position dirs[4] = { Position::left, Position::right, Position::up, Position::down };
 
+	std::vector<Position> deltas{ Position::left, Position::right, Position::up, Position::down };
+
 	Profiler profiler;
 
-	bool paused = false;
+	bool paused = true;
+	bool step = false;
 
 	size_t actionTracker[9] = {0};
 

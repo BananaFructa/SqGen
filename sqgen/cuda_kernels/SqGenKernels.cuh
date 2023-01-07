@@ -17,6 +17,7 @@ namespace SqGenKernels {
 
 	void processSIEInputs(
 		Array_DEVICE<short> logicMap,
+		Array_DEVICE<float> distanceMap,
 		TensorMap_DEVICE specieSignalMap,
 		Array_DEVICE<int> xPositionSet,
 		Array_DEVICE<int> yPositionSet,
