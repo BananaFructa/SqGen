@@ -138,10 +138,10 @@ public:
 	Tensor APSG_InputPool = Tensor(Size(3, 1, 10, Constants::nnPoolSize));
 
 	// LEFT - RIGHT - UP - DOWN												one for each direction V
-	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount, Constants::nnPoolSize * 4));
+	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount * 2, Constants::nnPoolSize * 4));
 
-	float* generatedSignalsOutput = new float[Constants::nnPoolSize];
-	float* decisionOutput = new float[9 * Constants::nnPoolSize];
+	std::vector<float> generatedSignalsOutput;
+	std::vector<float> decisionOutput;
 
 //  =======================================================================
 
@@ -168,6 +168,8 @@ public:
 	Array<short> logicMapObserveRange = Array<short>(Constants::agentObserveRangeTotal);
 	Array<float> logicMapDistanceRange = Array<float>(Constants::agentObserveRangeTotal);
 	// ======
+
+	Rational* mediumMap = new Rational[Constants::totalMapSize];
 
 	// Matrix which contain the food values of each tile
 	float* foodMap = new float[Constants::totalMapSize];
@@ -267,4 +269,10 @@ public:
 	void setFoodAt(Position pos, Rational r);
 	void restartFoodMap();
 	float getAgenentEnergy();
+
+	Rational getMediumAt(Position pos);
+	void setMediumAt(Position pos,Rational value);
+	float getTotalMedium();
+
+	Position randomUnoccupiedPosition();
 };

@@ -12,6 +12,9 @@ inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort =
 	if (code != cudaSuccess)
 	{
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		while ((code = cudaPeekAtLastError()) != cudaSuccess) {
+			fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		}
 		if (abort) __debugbreak();
 	}
 }
@@ -19,7 +22,7 @@ inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort =
 __global__ void initZeroTensor_kernel(Tensor_DEVICE t, size_t size) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < size) {
-		t[i] = 0;
+		t[i] = 0.0f;
 	}
 }
 
@@ -108,7 +111,14 @@ __global__ void mulTensor_kernel(Tensor_DEVICE tTarget,
 		}
 
 		size_t targetId = poolId * prodLc + line + column * l;
-		tTarget[targetId] = sum + operand * tTarget[targetId];
+
+		// It checks for 0 because otherwise the gods will grow discontent with our ways
+		if (operand != 0) {
+			tTarget[targetId] = sum + operand * tTarget[targetId];
+		}
+		else {
+			tTarget[targetId] = sum;
+		}
 
 	}
 }
@@ -152,7 +162,13 @@ __global__ void mulTensorMapped_kernel(TensorMap_DEVICE mapT,
 
 		size_t targetId = poolId * prodLc + line + column * l + allignOffsetT;
 		Tensor_DEVICE val = mapT[targetId / blockSizeT];
-		val[targetId % blockSizeT] = sum + operand * val[targetId % blockSizeT];
+		if (operand != 0) {
+			val[targetId % blockSizeT] = sum + operand * val[targetId % blockSizeT];
+		}
+		else {
+			val[targetId % blockSizeT] = sum;
+		}
+		
 
 	}
 }

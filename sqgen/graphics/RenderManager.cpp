@@ -41,13 +41,13 @@ void RenderManager::updateRenderData() {
 
         float factor;
         if (realFood) {
-            factor = std::log10(foodMap[j + i * Constants::mapSize] / std::log10(max) + 1);
+            factor = SimulationToRender.getMediumAt(Position(i,j)).toFloat() / (2 * Constants::mediumInitial.toFloat());
         }
         else {
             factor = foodMap[j + i * Constants::mapSize];// / Constants::FinitialMapFood;
         }
         factor = std::max(0.0f,std::min(1.0f, factor));
-        sf::Color Color = sf::Color::Color(13 * factor, 140 * factor, 5 * factor);
+        sf::Color Color = ( !realFood ? sf::Color::Color(13 * factor, 140 * factor, 5 * factor) : sf::Color::Color(0, 102 * factor, 255 * factor));
         backFood[(j + i * Constants::mapSize) * 4].color = Color;
         backFood[(j + i * Constants::mapSize) * 4 + 1].color = Color;
         backFood[(j + i * Constants::mapSize) * 4 + 2].color = Color;

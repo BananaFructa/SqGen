@@ -12,6 +12,28 @@
 
 int main() {
 
+	/*Tensor input;
+	input.load("input.npy");
+	input = input.slice(1831,1832);
+	Tensor params;
+	params.load("params.npy");
+	Tensor biases;
+	biases.load("biases.npy");
+
+	Tensor result(Size(1, 10, 15851));
+
+	result = input * params;
+	gpuSync();
+	result = result + biases;
+	gpuSync();
+	result.functionPass(KERNEL_TANH);
+	gpuSync();
+
+	std::vector<float> values(result.size.size);
+	result.getValue(values.data());
+
+	return 0;*/
+
 	Simulation simulation;
 
 	//simulation.loadSpecie("codependence_build/A");

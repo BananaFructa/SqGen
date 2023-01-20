@@ -24,4 +24,6 @@ struct Agent {
 
 	Rational food;
 
+	size_t lifetime;
+
 };

@@ -52,7 +52,6 @@ public:
 class RenderManager {
 
 private:
-
 	sf::Texture cursor;
 	sf::Sprite cursorSprite;
 

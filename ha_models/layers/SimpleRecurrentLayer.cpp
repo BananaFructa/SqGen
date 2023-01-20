@@ -29,6 +29,8 @@ void SimpleRecurrentLayer::setPool(size_t newSize) {
 		gpuSync();
 	}
 	layer.init(outSize);
+	layer.initZero();
+	gpuSync();
 }
 
 Size SimpleRecurrentLayer::getInputSize() {

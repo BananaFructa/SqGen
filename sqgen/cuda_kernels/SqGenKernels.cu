@@ -38,8 +38,14 @@ __global__ void processSIEInputs_kernel(
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
 			for (size_t j = 0; j < signalSize; j++) {
-				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5) * distanceMap[i];
-				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4) * distanceMap[i];
+				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5) * distanceMap[i];
+				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4) * distanceMap[i];
+			}
+		}
+
+		for (size_t j = 0; j < signalSize; j++) {
+			for (size_t k = 0; k < 4; k++) {
+				inputPool[(indexInModelInput + k) * signalSize * 2 + signalSize + j] = specieSignalMap[cy + cx * mapSize][j];
 			}
 		}
 
@@ -51,14 +57,14 @@ __global__ void processSIEInputs_kernel(
 
 			for (size_t i = 0; i < signalSize; i++) {
 				//                                                  V here as well
-				_max = max(_max, abs(inputPool[(indexInModelInput + j) * signalSize + i]));
+				_max = max(_max, abs(inputPool[(indexInModelInput + j) * signalSize * 2 + i]));
 			}
 
 			float biggerThan1 = min(1.0f,(float)(int)_max);
 
 			for (size_t i = 0; i < signalSize; i++) {
 				//                             V and here
-				//inputPool[(indexInModelInput + j) * signalSize + i] /= ((_max - 1) * biggerThan1 + 1);
+				inputPool[(indexInModelInput + j) * signalSize * 2 + i] /= ((_max - 1) * biggerThan1 + 1);
 			}
 		}
 
@@ -86,7 +92,12 @@ __global__ void processAPSGInputs_kernel(
 		// Current agent food
 		inputPool[t * 10 + 0] = foodLevels[t] / Constants::FmaximumFood;
 		// Food value of the tile
-		inputPool[t * 10 + 1] = max(0.0f,foodMap[cy + cx * mapSize]);
+		inputPool[t * 10 + 1] = max(0.0f,
+			foodMap[(cy + 1) % mapSize + cx * mapSize]+
+			foodMap[(cy - 1) % mapSize + cx * mapSize]+
+			foodMap[cy + ((cx + 1) % mapSize) * mapSize]+
+			foodMap[cy + ((cx - 1) % mapSize) * mapSize]
+		);
 
 		// Copy the visual data from the SIE output
 		for (size_t i = 0; i < 4; i++) {

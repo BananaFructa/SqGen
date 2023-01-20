@@ -171,6 +171,11 @@ void NNAgentModelManager::registerSpecie(SpecieID parent, SpecieID id, float pro
 		parentData[i].copyTo(tensorsData[i]);
 
 		curandManager.rndOffsetTensorUniform(tensorsData[i], prob, low, high, zprob);
+
+		gpuSyncStream(&curandManager.randStream);
+
+		tensorsData[i].clamp(-5, 5);
+		gpuSync();
 	}
 
 	agentModelVariables[id] = tensorsData;

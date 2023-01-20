@@ -74,6 +74,8 @@ void DenseLayer::setPool(size_t newSize) {
 	layer.free();
 	auxSumMem.free();
 	layer.init(Size((size_t)3, (size_t)1, size, newSize));
+	layer.initZero();
+	gpuSync();
 	if (activation == Activation::SOFTMAX) auxSumMem.init(Size((size_t)1, newSize));
 }
 

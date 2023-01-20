@@ -3,11 +3,14 @@
 #include <algorithm>
 
 struct Rational {
+
 	long long a = 0;
 	long long b = 1;
 
 	const float toFloat() const {
-		return (float)a / b;
+		float f = (float)a / b;
+		if (f != f) __debugbreak();
+		return f;
 	}
 
 	const Rational operator+(Rational r) const {
@@ -36,18 +39,27 @@ struct Rational {
 		long long a_ = a * r.a;
 		long long b_ = b;
 		if (a_ % r.b == 0) {
-			a_ /= r.b;
+			a_ = a_ / r.b;
 		}
 		else if (a_ % b == 0) {
-			a_ /= b;
+			a_ = a_ / b;
 			b_ = r.b;
 		}
 		else b_ *= r.b;
 		return { a_, b_ };
 	}
 
+	const Rational operator*(const long long r) const {
+		return { a * r,b };
+	}
+
 	const Rational operator+=(const Rational r) {
 		*this = *this + r;
+		return *this;
+	}
+
+	const Rational operator-=(const Rational r) {
+		*this += (-r);
 		return *this;
 	}
 

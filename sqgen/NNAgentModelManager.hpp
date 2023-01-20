@@ -18,6 +18,7 @@ struct MutationCfg {
 
 struct NNAgentModelManager {
 private:
+public:
 
 	bool hasVariables = false; // It wouldn't make sense for this to be false wouldn't it ? But it will be here for consistency
 	bool hasStates = false;
