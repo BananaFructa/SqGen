@@ -38,7 +38,7 @@ void Simulation::buildSG(NNModel& model) {
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize + 1 + 1 + 1 + 1, 10, Activation::TANH));
 	model.addLayer(new DenseLayer(10, 3, Activation::TANH));
 	model.addLayer(new SimpleRecurrentLayer(3, 3, Activation::TANH, Activation::TANH));
 	model.addLayer(new DenseLayer(3, 10, Activation::TANH));
@@ -631,7 +631,7 @@ void Simulation::share(size_t index) {
 void Simulation::pipelineToAPSG(size_t from, size_t to) {
 
 	profiler.start(COMPILE_ROUTINE);
-	SIE_Manager.compile(&agents[from], to - from, 4);
+	SIE_Manager.compile(&agents[from], to - from);
 	SG_Manager.compile(&agents[from], to - from);
 	AP_Manager.compile(&agents[from], to - from);
 

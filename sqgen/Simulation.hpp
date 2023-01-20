@@ -138,7 +138,7 @@ public:
 	Tensor APSG_InputPool = Tensor(Size(3, 1, 10, Constants::nnPoolSize));
 
 	// LEFT - RIGHT - UP - DOWN												one for each direction V
-	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount * 2, Constants::nnPoolSize * 4));
+	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount * 2, Constants::nnPoolSize));
 
 	std::vector<float> generatedSignalsOutput;
 	std::vector<float> decisionOutput;
