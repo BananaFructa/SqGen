@@ -22,7 +22,7 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 2000;
 	constexpr size_t curandPoolSize = 10000;
-	constexpr unsigned long seed = 2315;
+	constexpr unsigned long seed = 245;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
