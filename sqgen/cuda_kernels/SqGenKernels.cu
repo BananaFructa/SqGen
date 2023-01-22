@@ -26,8 +26,8 @@ __global__ void processSIEInputs_kernel(
 
 		int cx = xPositionSet[t]; // position x of the agent
 		int cy = yPositionSet[t]; // position y of the agent
-		size_t indexInModelInput = t * 4; // The index in the SIE input tensor
-		
+		size_t indexInModelInput = t; // The index in the SIE input tensor
+
 		size_t x, y;
 
 		for (size_t i = 0; i < (viewRange * 2 + 1) * (viewRange * 2 + 1); i++) {
@@ -38,35 +38,33 @@ __global__ void processSIEInputs_kernel(
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
 			for (size_t j = 0; j < signalSize; j++) {
-				inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5) * distanceMap[i];
-				inputPool[(indexInModelInput + (logic & 0b11)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4) * distanceMap[i];
+				inputPool[indexInModelInput * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * logic * distanceMap[i];
+				//inputPool[(indexInModelInput + ((logic & 0b1100) >> 2)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_SECOND) >> 5) * distanceMap[i];
+				//inputPool[(indexInModelInput + (logic & 0b11)) * signalSize * 2 + j] += specieSignalMap[y + x * mapSize][j] * (float)((logic & USE_FIRST) >> 4) * distanceMap[i];
 			}
 		}
 
 		for (size_t j = 0; j < signalSize; j++) {
-			for (size_t k = 0; k < 4; k++) {
-				inputPool[(indexInModelInput + k) * signalSize * 2 + signalSize + j] = specieSignalMap[cy + cx * mapSize][j];
-			}
+			inputPool[indexInModelInput * signalSize * 2 + signalSize + j] = specieSignalMap[cy + cx * mapSize][j];
 		}
 
 		// Normalization step
 
-		for (size_t j = 0; j < 4; j++) {
 
-			float _max = 0;
+		float _max = 0;
 
-			for (size_t i = 0; i < signalSize; i++) {
-				//                                                  V here as well
-				_max = max(_max, abs(inputPool[(indexInModelInput + j) * signalSize * 2 + i]));
-			}
-
-			float biggerThan1 = min(1.0f,(float)(int)_max);
-
-			for (size_t i = 0; i < signalSize; i++) {
-				//                             V and here
-				inputPool[(indexInModelInput + j) * signalSize * 2 + i] /= ((_max - 1) * biggerThan1 + 1);
-			}
+		for (size_t i = 0; i < signalSize; i++) {
+			//                                                  V here as well
+			_max = max(_max, abs(inputPool[(indexInModelInput) * signalSize * 2 + i]));
 		}
+
+		float biggerThan1 = min(1.0f, (float)(int)_max);
+
+		for (size_t i = 0; i < signalSize; i++) {
+			//                             V and here
+			inputPool[indexInModelInput * signalSize * 2 + i] /= ((_max - 1) * biggerThan1 + 1);
+		}
+
 
 	}
 }
@@ -90,9 +88,9 @@ __global__ void processAPSGInputs_kernel(
 		int cy = yPositionSet[t];
 
 		// Current agent food
-		inputPool[t * 10 + 0] = foodLevels[t] / Constants::FmaximumFood;
+		inputPool[t * 4 + 0] = foodLevels[t] / Constants::FmaximumFood;
 		// Food value of the tile
-		inputPool[t * 10 + 1] = max(0.0f,
+		inputPool[t * 4 + 1] = max(0.0f,
 			foodMap[(cy + 1) % mapSize + cx * mapSize]+
 			foodMap[(cy - 1) % mapSize + cx * mapSize]+
 			foodMap[cy + ((cx + 1) % mapSize) * mapSize]+
@@ -100,9 +98,7 @@ __global__ void processAPSGInputs_kernel(
 		);
 
 		// Copy the visual data from the SIE output
-		for (size_t i = 0; i < 4; i++) {
-			inputPool[t * 10 + 2 + i] = SIE_Output[t * 4 + i];
-		}
+	    inputPool[t * 4 + 2] = SIE_Output[t];
 
 		size_t x, y;
 
@@ -113,9 +109,10 @@ __global__ void processAPSGInputs_kernel(
 			y = (cy-viewRange) + i % (viewRange * 2 + 1);
 			x = (x + mapSize) % mapSize;
 			y = (y + mapSize) % mapSize;
-			short logic = logicMap[i];
-			inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * (float)((logic & USE_SECOND) >> 5);
-			inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * (float)((logic & USE_FIRST) >> 4);
+			inputPool[(t * 4 + 3)] += signalMap[y + x * mapSize] * logicMap[i];
+			//short logic = logicMap[i];
+			//inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * (float)((logic & USE_SECOND) >> 5);
+			//inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * (float)((logic & USE_FIRST) >> 4);
 		}
 
 	}

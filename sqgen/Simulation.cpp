@@ -31,14 +31,18 @@ void Simulation::buildSIE(NNModel& model) {
 
 void Simulation::buildSG(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 1 + 1 + 1 + 1, 10, Activation::TANH));
 	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
 	model.addLayer(new DenseLayer(10, 1, Activation::TANH));
 }
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
+<<<<<<< Updated upstream
 	model.addLayer(new DenseLayer(Constants::visualLatentSize + 1 + 1 + 1 + 1, 10, Activation::TANH));
+=======
+	model.addLayer(new DenseLayer(Constants::visualLatentSize + 1 + 1 + 1, 10, Activation::TANH));
+>>>>>>> Stashed changes
 	model.addLayer(new DenseLayer(10, 3, Activation::TANH));
 	model.addLayer(new SimpleRecurrentLayer(3, 3, Activation::TANH, Activation::TANH));
 	model.addLayer(new DenseLayer(3, 10, Activation::TANH));
@@ -56,32 +60,10 @@ Simulation::Simulation() {
 
 	for (int y = 0; y < Constants::agentObserveRange * 2 + 1; y++) {
 		for (int x = 0; x < Constants::agentObserveRange * 2 + 1; x++) {
-			if (x < Constants::agentObserveRange && y < Constants::agentObserveRange) {
-				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | UP_SECOND | USE_FIRST | USE_SECOND;
-			}
-			if (x < Constants::agentObserveRange && y > Constants::agentObserveRange) {
-				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | DOWN_SECOND | USE_FIRST | USE_SECOND;
-			}
-			if (x > Constants::agentObserveRange && y < Constants::agentObserveRange) {
-				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = UP_FIRST | RIGHT_SECOND | USE_FIRST | USE_SECOND;
-			}
-			if (x > Constants::agentObserveRange && y > Constants::agentObserveRange) {
-				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = DOWN_FIRST | RIGHT_SECOND | USE_FIRST | USE_SECOND;
-			}
-			if (x == Constants::agentObserveRange) {
-				if (y < Constants::agentObserveRange)
-					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = UP_FIRST | USE_FIRST;
-				if (y > Constants::agentObserveRange)
-					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = DOWN_FIRST | USE_FIRST;
-			}
-			if (y == Constants::agentObserveRange) {
-				if (x < Constants::agentObserveRange)
-					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = LEFT_FIRST | USE_FIRST;
-				if (x > Constants::agentObserveRange)
-					observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = RIGHT_FIRST | USE_FIRST;
-			}
-			if (x == Constants::agentObserveRange && y == Constants::agentObserveRange)
+			observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = 1;
+			if (x == Constants::agentObserveRange && y == Constants::agentObserveRange) {
 				observeLogic[y + x * (Constants::agentObserveRange * 2 + 1)] = 0;
+			}
 		}
 	}
 
@@ -660,7 +642,7 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 
 	profiler.end(SIE_INPUT_ROUTINE);
 
-	Tensor slicedSIE_pool = SIE_InputPool.slice(0, (to - from) * 4);
+	Tensor slicedSIE_pool = SIE_InputPool.slice(0, (to - from));
 
 	profiler.start(SIE_PREDICT_ROUTINE);
 
@@ -861,7 +843,7 @@ void Simulation::update() {
 	std::vector<size_t> toRemove;
 
 	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
-		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || agents[i].lifetime == 0) toRemove.push_back(i);
+		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || --agents[i].lifetime == 0) toRemove.push_back(i);
 	}
 
 	for (size_t i = 0; i < toRemove.size(); i++) {

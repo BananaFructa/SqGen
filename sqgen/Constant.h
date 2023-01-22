@@ -20,9 +20,9 @@ namespace Constants {
 
 	// ========== MEMORY AND PROCESS MANAGMENT CONSTANTS ===========
 
-	constexpr size_t nnPoolSize = 2000;
+	constexpr size_t nnPoolSize = 5000;
 	constexpr size_t curandPoolSize = 10000;
-	constexpr unsigned long seed = 2315;
+	constexpr unsigned long seed = 987;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
@@ -79,11 +79,11 @@ namespace Constants {
 		1		// Mutation Amplitude
 	};
 
-	constexpr Rational initialMapFood = {  0, 4	};
+	constexpr Rational initialMapFood = {  1, 4	};
 	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
 	const Rational eatAmount = { 1, 2 };
-	const Rational moveEnergyCost = { 0, 32 }; // spilled
+	const Rational moveEnergyCost = { 1, 16 }; // spilled
 	const Rational multiplyEnergyCost = { 15, 1 }; // this energy should also be included in the spillage
 
 	constexpr float FinitialMapFood = (float)initialMapFood.a / initialMapFood.b;
@@ -104,7 +104,7 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	const int startingAgentCount = 20000;
+	const int startingAgentCount = 4000;
 
 	constexpr Rational mediumInitial = { 8,1 };
 

@@ -120,7 +120,7 @@ public:
 	CurandManager curandManager = CurandManager(Constants::curandPoolSize, Constants::seed);
 
 	// Specie Information Encoder                         V each agent needs to run their SIE 4 times in 4 directions
-	NNModel SIE_Network = NNModel(Constants::nnPoolSize * 4);
+	NNModel SIE_Network = NNModel(Constants::nnPoolSize);
 	NNAgentModelManager SIE_Manager;
 
 	NNModel SG_Network = NNModel(Constants::nnPoolSize);
@@ -135,7 +135,7 @@ public:
 	void buildAP(NNModel& model);
 
 	// AP & SG gpu netowrk input             V 10 inputs             
-	Tensor APSG_InputPool = Tensor(Size(3, 1, 10, Constants::nnPoolSize));
+	Tensor APSG_InputPool = Tensor(Size(3, 1, 4, Constants::nnPoolSize));
 
 	// LEFT - RIGHT - UP - DOWN												one for each direction V
 	Tensor SIE_InputPool = Tensor(Size(3, 1, Constants::spicieSignalCount * 2, Constants::nnPoolSize));
