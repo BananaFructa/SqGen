@@ -781,7 +781,7 @@ void Simulation::update() {
 				if (getMediumAt(dp) < getMediumAt(pos)) {
 					Rational f = getMediumAt(pos) - getMediumAt(dp);
 					if (f.b < 100) f.multiply(100);
-					f.a /= 10;
+					f.a /= 25;
 					setMediumAt(dp, getMediumAt(dp) + f);
 					setMediumAt(pos, getMediumAt(pos) - f);
 				}

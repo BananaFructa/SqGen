@@ -79,11 +79,11 @@ namespace Constants {
 		1		// Mutation Amplitude
 	};
 
-	constexpr Rational initialMapFood = {  0, 4	};
+	constexpr Rational initialMapFood = {  1, 4	};
 	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
 	const Rational eatAmount = { 1, 2 };
-	const Rational moveEnergyCost = { 0, 32 }; // spilled
+	const Rational moveEnergyCost = { 1, 16 }; // spilled
 	const Rational multiplyEnergyCost = { 15, 1 }; // this energy should also be included in the spillage
 
 	constexpr float FinitialMapFood = (float)initialMapFood.a / initialMapFood.b;
