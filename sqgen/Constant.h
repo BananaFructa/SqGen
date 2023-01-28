@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rational.hpp"
+#include<ctime>
 
 struct NetworkInitDetails {
 public:
@@ -22,7 +23,7 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 2000;
 	constexpr size_t curandPoolSize = 10000;
-	constexpr unsigned long seed = 245;
+	const unsigned long seed = std::time(0);
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
@@ -33,13 +34,13 @@ namespace Constants {
 
 	const NetworkInitDetails AP_InitDetails = {
 		10,		// Init Inputs
-		5,		// Init Hidden
+		10,		// Init Hidden
 		1.0f	// Init Amplitude
 	};
 
 	const NetworkInitDetails SG_InitDetails{
-		10,		// Init Inputs
-		1,		// Init Hidden
+		3,		// Init Inputs
+		3,		// Init Hidden
 		1		// Init Amplitude
 	};	
 
@@ -51,39 +52,39 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 300;
+	constexpr size_t mapSize = 100;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
 	constexpr int agentObserveRangeTotal = (agentObserveRange * 2 + 1) * (agentObserveRange * 2 + 1);
-	const float specieSignalMutationProb = 1;
-	const float specieSignalMutatuionAmplitude = 0.2;
+	const float specieSignalMutationProb = 0.5;
+	const float specieSignalMutatuionAmplitude = 0.1;
 
-	const float agentMutationProbability = 0.34;
+	const float agentMutationProbability = 0.10;
 
 	const NetworkMutationDetails AP_MutationDetails = {
-		0.01,		// Non-zero mutation probability
-		0.01,		// Zero mutation probability
+		0.05,		// Non-zero mutation probability
+		0.05,		// Zero mutation probability
 		1		// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SG_MutationDetails = {
-		0.01,		// Non-zero mutation probability
-		0.01,		// Zero mutation probability
+		0.05,		// Non-zero mutation probability
+		0.05,		// Zero mutation probability
 		1		// Mutation Amplitude
 	};
 
 	const NetworkMutationDetails SIE_MutationDetails = {
-		0.01,		// Non-zero mutation probability
-		0.01,		// Zero mutation probability
-		1		// Mutation Amplitude
+		0.05,		// Non-zero mutation probability
+		0.05,		// Zero mutation probability
+		1	// Mutation Amplitude
 	};
 
-	constexpr Rational initialMapFood = {  1, 4	};
+	constexpr Rational initialMapFood = {  1, 2	};
 	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
 	const Rational eatAmount = { 1, 2 };
-	const Rational moveEnergyCost = { 1, 16 }; // spilled
+	const Rational moveEnergyCost = { 1, 8 }; // spilled
 	const Rational multiplyEnergyCost = { 15, 1 }; // this energy should also be included in the spillage
 
 	constexpr float FinitialMapFood = (float)initialMapFood.a / initialMapFood.b;
@@ -104,9 +105,9 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	const int startingAgentCount = 20000;
+	const int startingAgentCount = 1000;
 
 	constexpr Rational mediumInitial = { 8,1 };
 
-	constexpr size_t agentLifetime = 1000;
+	constexpr size_t agentLifetime = 500;
 }
