@@ -18,13 +18,10 @@
 
 #define EAT 0
 #define MULTIPLY 1
-#define UP 2
-#define DOWN 3
-#define RIGHT 4
-#define LEFT 5
-#define ATTACK 6
-#define SHARE 7
-#define SIGNAL 8
+#define MOVE_X 2
+#define MOVE_Y 3
+#define TRANSFER 4
+#define SIGNAL 5
 
 /*
 	VIEW RANGE:
@@ -172,18 +169,18 @@ public:
 	Rational* mediumMap = new Rational[Constants::totalMapSize];
 
 	// Matrix which contain the food values of each tile
-	float* foodMap = new float[Constants::totalMapSize];
+	float* foodMap;// = new float[Constants::totalMapSize];
 	Rational* rationalMapFood = new Rational[Constants::totalMapSize];
 	// GPU side matrix of the above
 	Tensor gpuFoodMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
 	// Matrix which contains the signal outputs of the agents
-	float* signalMap = new float[Constants::totalMapSize];
+	float* signalMap;// = new float[Constants::totalMapSize];
 	// GPU side matrix of the above
 	Tensor gpuSignalMap = Tensor(Size(2, Constants::mapSize, Constants::mapSize));
 
 	// Matrix which contains the specie id of each agent
-	SpecieID* specieMap = new SpecieID[Constants::totalMapSize];
+	SpecieID* specieMap;// = new SpecieID[Constants::totalMapSize];
 	size_t* indexMap = new size_t[Constants::totalMapSize];
 
 	// Matrix which contains a reference to the specie signal set of the agents at each position on the map
@@ -206,25 +203,25 @@ public:
 
 //  =======================================================================
 
-	Position dirs[4] = { Position::left, Position::right, Position::up, Position::down };
+	Position2i dirs[4] = { Position2i::left, Position2i::right, Position2i::up, Position2i::down };
 
-	std::vector<Position> deltas{ Position::left, Position::right, Position::up, Position::down };
+	std::vector<Position2i> deltas{ Position2i::left, Position2i::right, Position2i::up, Position2i::down };
 
 	Profiler profiler;
 
 	bool paused = true;
 	bool step = false;
 
-	size_t actionTracker[9] = {0};
+	float actionTracker[9] = {0};
 
-	void eat(size_t index);
-	void attack(size_t index);
-	void share(size_t index);
+	void eat(size_t index,Rational amount);
+	void transfer(size_t index, Rational amount);
+	void share(size_t index, Rational amount);
 	void addToAgentFood(size_t index, Rational food);
-	void setAgentPos(size_t index, Position newPos);
-	void moveAgent(size_t index, Position delta);
-	bool positionOccupied(Position pos);
-	void spillFood(Position pos, Rational amount);
+	void setAgentPos(size_t index, Position2i newPos);
+	void moveAgent(size_t index, Position2i delta);
+	bool positionOccupied(Position2i pos);
+	void spillFood(Position2i pos, Rational amount);
 
 public:
 
@@ -232,9 +229,9 @@ public:
 
 	void gpuUploadMaps();
 
-	size_t getAgentAt(Position pos);
+	size_t getAgentAt(Position2i pos);
 
-	void addAgentFromSpecie(SpecieID id, Position pos);
+	void addAgentFromSpecie(SpecieID id, Position2i pos);
 	void addNewAgent();
 	bool addAgent(Agent parent);
 	void removeAgent(size_t index);
@@ -265,14 +262,14 @@ public:
 
 	float getTotalFood();
 
-	Rational getFoodAt(Position pos);
-	void setFoodAt(Position pos, Rational r);
+	Rational getFoodAt(Position2i pos);
+	void setFoodAt(Position2i pos, Rational r);
 	void restartFoodMap();
 	float getAgenentEnergy();
 
-	Rational getMediumAt(Position pos);
-	void setMediumAt(Position pos,Rational value);
+	Rational getMediumAt(Position2i pos);
+	void setMediumAt(Position2i pos,Rational value);
 	float getTotalMedium();
 
-	Position randomUnoccupiedPosition();
+	Position2i randomUnoccupiedPosition();
 };

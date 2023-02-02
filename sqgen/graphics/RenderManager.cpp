@@ -41,7 +41,7 @@ void RenderManager::updateRenderData() {
 
         float factor;
         if (realFood) {
-            factor = SimulationToRender.getMediumAt(Position(i,j)).toFloat() / (2 * Constants::mediumInitial.toFloat());
+            factor = SimulationToRender.getMediumAt(Position2i(i,j)).toFloat() / (2 * Constants::mediumInitial.toFloat());
         }
         else {
             factor = foodMap[j + i * Constants::mapSize];// / Constants::FinitialMapFood;
@@ -173,7 +173,7 @@ void RenderManager::RunEvent(sf::Event Event) {
 
                 std::cout << "=========================\n";
 
-                Agent agent = SimulationToRender.getAgents()[SimulationToRender.getAgentAt(Position(cursorPos.x, cursorPos.y))];
+                Agent agent = SimulationToRender.getAgents()[SimulationToRender.getAgentAt(Position2i(cursorPos.x, cursorPos.y))];
 
                 float sig[Constants::spicieSignalCount];
 

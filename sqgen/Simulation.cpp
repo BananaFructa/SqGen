@@ -40,17 +40,21 @@ void Simulation::buildSG(NNModel& model) {
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 10, Activation::TANH));
-	model.addLayer(new SimpleRecurrentLayer(10, 10, TANH, TANH));
-	model.addLayer(new DenseLayer(10, 10, Activation::TANH));
-	model.addLayer(new DenseLayer(10, 9, Activation::SOFTMAX));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::TANH));
+	//model.addLayer(new SimpleRecurrentLayer(10, 10, TANH, TANH));
+	model.addLayer(new DenseLayer(20, 10, Activation::TANH));
+	model.addLayer(new DenseLayer(10, 6, Activation::TANH));
 }
 
 Simulation::Simulation() {
 
+	cudaMallocHost(&foodMap, Constants::totalMapSize * sizeof(float));
+	cudaMallocHost(&signalMap, Constants::totalMapSize * sizeof(float));
+	cudaMallocHost(&specieMap, Constants::totalMapSize * sizeof(SpecieID));
+
 	// Generate helper gpu map for processing spatial data
 
-	decisionOutput.resize(Constants::nnPoolSize * 9);
+	decisionOutput.resize(Constants::nnPoolSize * 6);
 	generatedSignalsOutput.resize(Constants::nnPoolSize);
 
 	short observeLogic[Constants::agentObserveRangeTotal];
@@ -111,7 +115,7 @@ Simulation::Simulation() {
 	SG_Manager = NNAgentModelManager(SG_Network, curandManager);
 	AP_Manager = NNAgentModelManager(AP_Netowrk, curandManager);
 
-	randomPositionGenerator = RndPosGenerator(Position(0, 0), Position(Constants::mapSize, Constants::mapSize));
+	randomPositionGenerator = RndPosGenerator(Position2i(0, 0), Position2i(Constants::mapSize, Constants::mapSize));
 
 	Tensor nullSpecieSignal = Tensor(Size(1, Constants::spicieSignalCount));
 	nullSpecieSignal.initZero();
@@ -130,12 +134,12 @@ Simulation::Simulation() {
 
 }
 
-size_t Simulation::getAgentAt(Position pos) {
+size_t Simulation::getAgentAt(Position2i pos) {
 	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return indexMap[pos.y + pos.x * Constants::mapSize];
 }
 
-void Simulation::addAgentFromSpecie(SpecieID sid, Position pos) {
+void Simulation::addAgentFromSpecie(SpecieID sid, Position2i pos) {
 	if (agents.size() == Constants::totalMapSize) return;
 
 	AgentResourceID id = getAgentID();
@@ -148,8 +152,8 @@ void Simulation::addAgentFromSpecie(SpecieID sid, Position pos) {
 	SIE_Manager.registerAgent(id);
 	SG_Manager.registerAgent(id);
 	AP_Manager.registerAgent(id);
-
-	Agent newAgent = { specieId,id,pos,pos,0,Constants::initialFood,Constants::agentLifetime };
+	Position2f zerof = Position2f(0, 0);
+	Agent newAgent = { specieId,id,pos,zerof,pos,0,Constants::initialFood,Constants::agentLifetime };
 
 	agents.push_back(newAgent); // Agent vec
 	xPositions.push_back(newAgent.pos.x); // x vec
@@ -166,7 +170,7 @@ void Simulation::addNewAgent() {
 
 	// Choose position
 
-	Position pos;
+	Position2i pos;
 
 	do {
 		pos = randomPositionGenerator.next();
@@ -184,8 +188,8 @@ void Simulation::addNewAgent() {
 	AP_Manager.registerAgent(id);
 
 	// Create agent and update all necessart registries
-
-	Agent newAgent = { specieId,id,pos,pos,0,Constants::initialFood,Constants::agentLifetime };
+	Position2f zerof = Position2f(0, 0);
+	Agent newAgent = { specieId,id,pos,zerof,pos,0,Constants::initialFood,Constants::agentLifetime };
 
 	agents.push_back(newAgent); // Agent vec
 	xPositions.push_back(newAgent.pos.x); // x vec
@@ -198,16 +202,16 @@ void Simulation::addNewAgent() {
 
 bool Simulation::addAgent(Agent parent) {
 
-	Position pos = parent.lastPos;
+	Position2i pos = parent.lastPos;
 
 	if (positionOccupied(pos)) {
 
 		// Algorithm for random position selection around the parent agent
 
-		bool l = !positionOccupied(parent.pos + Position::left);
-		bool r = !positionOccupied(parent.pos + Position::right);
-		bool d = !positionOccupied(parent.pos + Position::down);
-		bool u = !positionOccupied(parent.pos + Position::up);
+		bool l = !positionOccupied(parent.pos + Position2i::left);
+		bool r = !positionOccupied(parent.pos + Position2i::right);
+		bool d = !positionOccupied(parent.pos + Position2i::down);
+		bool u = !positionOccupied(parent.pos + Position2i::up);
 
 		unsigned short totalDirs = l + r + d + u;
 
@@ -227,7 +231,7 @@ bool Simulation::addAgent(Agent parent) {
 
 		i--;
 
-		Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
+		Position2i deltas[4] = { Position2i::left, Position2i::right, Position2i::up, Position2i::down };
 
 		pos = parent.pos + deltas[i];
 		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
@@ -254,7 +258,8 @@ bool Simulation::addAgent(Agent parent) {
 
 	registerNewSpecieMember(specieId);
 
-	Agent newAgent = { specieId,id,pos,pos,generation,Constants::initialFood,Constants::agentLifetime };
+	Position2f zerof = Position2f(0, 0);
+	Agent newAgent = { specieId,id,pos,zerof,pos,generation,Constants::initialFood,Constants::agentLifetime };
 
 	spillFood(pos, Constants::multiplyEnergyCost - Constants::initialFood);
 
@@ -297,7 +302,7 @@ void Simulation::removeAgent(size_t index) {
 
 	if (index == agents.size()) return;
 
-	Position pos = agents[index].pos;
+	Position2i pos = agents[index].pos;
 	indexMap[pos.y + pos.x * Constants::mapSize] = index;
 }
 
@@ -437,7 +442,7 @@ SpecieID Simulation::getSpecieID() {
 	return specieCounter++;
 }
 
-bool Simulation::positionOccupied(Position pos) {
+bool Simulation::positionOccupied(Position2i pos) {
 	pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 	return specieMap[pos.y + pos.x * Constants::mapSize] != NULL_ID;
 }
@@ -458,7 +463,7 @@ void Simulation::addToAgentFood(size_t index, Rational food) {
 	foodLevels[index] = agents[index].food.toFloat();
 }
 
-void Simulation::setAgentPos(size_t index, Position newPos) {
+void Simulation::setAgentPos(size_t index, Position2i newPos) {
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 	signalMap[newPos.y + newPos.x * Constants::mapSize] = signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize];
 	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
@@ -473,16 +478,16 @@ void Simulation::setAgentPos(size_t index, Position newPos) {
 	indexMap[newPos.y + newPos.x * Constants::mapSize] = index;
 }
 
-void Simulation::moveAgent(size_t index, Position delta) {
+void Simulation::moveAgent(size_t index, Position2i delta) {
 	// Todo: Move signal
-	Position to = agents[index].pos + delta;
+	Position2i to = agents[index].pos + delta;
 
 	to.wrapPositive(Constants::mapSize, Constants::mapSize);
 
 	if (!positionOccupied(to)) {
 		//if (Random::runProbability(0.2f)) {
 		//}
-		Position front = to + delta;
+		Position2i front = to + delta;
 
 		Rational displaced = getMediumAt(to);
 
@@ -513,25 +518,32 @@ void Simulation::moveAgent(size_t index, Position delta) {
 	}
 }
 
-void Simulation::spillFood(Position pos, Rational amount) { 
-
+void Simulation::spillFood(Position2i pos, Rational amount) { 
+	if (amount.negative()) __debugbreak();
 	setFoodAt(pos, getFoodAt(pos) + amount);
 
 }
 
-void Simulation::eat(size_t index) {
+void Simulation::eat(size_t index,Rational amount) {
 	for (int i = 0; i < 4; i++) {
-		Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
-		Position pos = agents[index].pos + deltas[i];
+		Position2i deltas[4] = { Position2i::left, Position2i::right, Position2i::up, Position2i::down };
+		Position2i pos = agents[index].pos + deltas[i];
 		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 		Rational oneOverFour = { 1,4 };
-		if (getFoodAt(pos) >= Constants::eatAmount * oneOverFour) {
-			addToAgentFood(index, Constants::eatAmount * oneOverFour);
-			setFoodAt(pos, getFoodAt(pos) - Constants::eatAmount * oneOverFour);
+		amount = amount * oneOverFour;
+		if (getFoodAt(pos) >= amount && agents[index].food + amount >= Rational()) {
+			addToAgentFood(index, amount);
+			setFoodAt(pos, getFoodAt(pos) - amount);
 		}
-		else {
+
+		if (getFoodAt(pos) < amount) {
 			addToAgentFood(index, getFoodAt(pos));
 			setFoodAt(pos, { 0,1 });
+		}
+
+		if (agents[index].food + amount < Rational()){
+			setFoodAt(pos, getFoodAt(pos) + agents[index].food);
+			addToAgentFood(index, -agents[index].food);
 		}
 	}
 	//Position pos = agents[index].pos + agents[index].pos - agents[index].lastPos;
@@ -546,7 +558,7 @@ void Simulation::eat(size_t index) {
 	//}
 }
 
-void Simulation::attack(size_t index) {
+void Simulation::transfer(size_t index,Rational amount) {
 
 	//Rational totalFoodBalance = {0,1};
 	//totalFoodBalance -= Constants::attackEnergyCost;
@@ -572,53 +584,48 @@ void Simulation::attack(size_t index) {
 
 	//}
 
-	Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
+	Position2i deltas[4] = { Position2i::left, Position2i::right, Position2i::up, Position2i::down };
 
-	Rational totalFoodBalance = { 0,1 };
+	Rational oneOverFour = { 1,4 };
+	amount = amount * oneOverFour;
 
 	for (int i = 0; i < 4; i++) {
-		Position pos = agents[index].pos + deltas[i];
+		Position2i pos = agents[index].pos + deltas[i];
 		pos.wrapPositive(Constants::mapSize, Constants::mapSize);
 		if (positionOccupied(pos)) {
 			size_t target = getAgentAt(pos);
-			if (Constants::attackEnergyGain <= agents[target].food) {
-				totalFoodBalance += Constants::attackEnergyGain;
-				addToAgentFood(target, -Constants::attackEnergyGain);
+
+			if (amount <= agents[target].food && amount + agents[index].food >= Rational()) {
+				addToAgentFood(index, amount);
+				addToAgentFood(target, -amount);
 			}
-			else {
-				totalFoodBalance += agents[target].food;
+
+			if (amount > agents[target].food) {
+				addToAgentFood(index, agents[target].food);
 				addToAgentFood(target, -agents[target].food);
 			}
+
+			if (amount + agents[index].food < Rational()) {
+				addToAgentFood(target, agents[index].food);
+				addToAgentFood(index, -agents[index].food);
+				return;
+			}
 		}
 
-	}
-
-	if (totalFoodBalance == Rational()) {
-		if (agents[index].food >= Constants::attackEnergyCost) {
-			spillFood(agents[index].pos, Constants::attackEnergyCost);
-			addToAgentFood(index, -Constants::attackEnergyCost);
-		}
-		else {
-			spillFood(agents[index].pos, agents[index].food);
-			addToAgentFood(index, -agents[index].food);
-		}
-	}
-	else {
-		addToAgentFood(index, totalFoodBalance);
 	}
 }
 
-void Simulation::share(size_t index) {
+void Simulation::share(size_t index,Rational amount) {
 
 	Rational oneOverFour = { 1,4 };
-	Rational sharable = Constants::shareEnergyTransfer * oneOverFour;
+	Rational sharable =amount * oneOverFour;
 
-	Position pos = agents[index].pos;
+	Position2i pos = agents[index].pos;
 
-	Position deltas[4] = { Position::left, Position::right, Position::up, Position::down };
+	Position2i deltas[4] = { Position2i::left, Position2i::right, Position2i::up, Position2i::down };
 
 	for (int i = 0; i < 4; i++) {
-		Position relative = pos + deltas[i];
+		Position2i relative = pos + deltas[i];
 		relative.wrapPositive(Constants::mapSize, Constants::mapSize);
 		if (!positionOccupied(relative)) {
 			if (agents[index].food < sharable) sharable = agents[index].food;
@@ -726,7 +733,7 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 
 	gpuSync();
 
-	decisions.getValue(&decisionOutput[from*9]);
+	decisions.getValue(&decisionOutput[from*6]);
 	generatedSignals.getValue(&generatedSignalsOutput[from]);
 
 }
@@ -738,6 +745,7 @@ void Simulation::update() {
 	if (paused && !step) return;
 	if (step) step = !step;
 
+	aa++;
 
 	gpuSync();
 
@@ -746,9 +754,9 @@ void Simulation::update() {
 	size_t remaining = agents.size();
 	size_t current = 0;
 
-	for (int i = 0; i < 9; i++) actionTracker[i] = 0;
+	for (int i = 0; i < 6; i++) actionTracker[i] = 0;
 
-	while(agents.size() * 9 >= decisionOutput.size()) decisionOutput.resize(2 * decisionOutput.size());
+	while(agents.size() * 6 >= decisionOutput.size()) decisionOutput.resize(2 * decisionOutput.size());
 	while (agents.size() >= generatedSignalsOutput.size()) generatedSignalsOutput.resize(2 * generatedSignalsOutput.size());
 
 	while (remaining > Constants::nnPoolSize - 500) {
@@ -765,17 +773,17 @@ void Simulation::update() {
 
 	for (size_t x = 0; x < Constants::mapSize; x++) {
 		for (size_t y = 0; y < Constants::mapSize; y++) {
-			Position pos(x, y);
+			Position2i pos(x, y);
 			//spillFood(pos, { 1,100 });
 			std::random_shuffle(deltas.begin(), deltas.end());
 			for (int i = 0; i < 4; i++) {
-				Position dp = (pos + deltas[i]);
+				Position2i dp = (pos + deltas[i]);
 				if (positionOccupied(dp)) continue;
 				dp.wrapPositive(Constants::mapSize, Constants::mapSize);
 				if (getFoodAt(dp) < getFoodAt(pos)) {
 					Rational f = getFoodAt(pos) - getFoodAt(dp);
 					if (f.b < 100) f.multiply(100);
-					f.a /= 25;
+					f.a /= 2;
 					setFoodAt(dp, getFoodAt(dp) + f);
 					setFoodAt(pos, getFoodAt(pos) - f);
 				}
@@ -797,72 +805,40 @@ void Simulation::update() {
 	size_t initialSize = agents.size();
 
 	for (size_t i = 0; i < initialSize; i++) {
-		//if (generatedSignalsOutput[i] != generatedSignalsOutput[i]) {
-		//	__debugbreak();
-		//	std::vector<float> a(slicedAPSG.size.size);
-		//	slicedAPSG.getValue(a.data());
-		//	Tensor* ts = SG_Manager.agentModelVariables[agents[i].specieId];// 9 to 9 error
-		//	std::vector<Layer*> layers = SG_Manager.supermodel.layers;
-		//	for (int l = 0; l < layers.size(); l++) {
-		//		Tensor t = layers[l]->getValue();
-		//		std::vector<float> ff(t.size.size);
-		//		t.getValue(ff.data());
-		//	}
-		//	for (int l = 0; l < SG_Manager.paramCount; l++) {
-		//		std::vector<float> f(ts[l].size.size);
-		//		ts[l].getValue(f.data());
-		//	}
-		//	slicedAPSG.save("input.npy");
-		//	ts[0].save("params.npy");
-		//	ts[1].save("biases.npy");
-		//}
-		Agent& agent = agents[i];
-		Position pos = agent.pos;
-		int action = Random::runProbabilityVector(&decisionOutput[i * 9], 9);
-		actionTracker[action]++;
-		//if (!(generatedSignalsOutput[i] != generatedSignalsOutput[i]))signalMap[pos.y + pos.x * Constants::mapSize] = generatedSignalsOutput[i];
-		//else {
-		//	signalMap[pos.y + pos.x * Constants::mapSize] = 0;
-		//	aa++;
-		//}
-		switch (action) {
-		case EAT:
-			eat(i);
-			break;
-		case MULTIPLY:
-			if (agent.food > Constants::multiplyEnergyCost) {
-				if (addAgent(agent)) addToAgentFood(i, -Constants::multiplyEnergyCost);
+		Position2i pos = agents[i].pos;
+
+		for (int j = 0; j < 6; j++) actionTracker[j] += decisionOutput[i *6 + j];
+
+		if (decisionOutput[i * 6 + MULTIPLY] > 0) {
+			if (agents[i].food > Constants::multiplyEnergyCost) {
+				if (addAgent(agents[i])) addToAgentFood(i, -Constants::multiplyEnergyCost);
 			}
 			else {
 				//spillFood(agent.pos, agent.food);
 				//addToAgentFood(i, -agent.food);
 			}
-			break;
-		case UP:
-			moveAgent(i, Position(0, -1));
-			break;
-		case DOWN:
-			moveAgent(i, Position(0, 1));
-			break;
-		case LEFT:
-			moveAgent(i, Position(-1, 0));
-			break;
-		case RIGHT:
-			moveAgent(i, Position(1, 0));
-			break;
-		case ATTACK:
-			attack(i);
-			break;
-		case SHARE:
-			share(i);
-			break;
-		case SIGNAL:
-			if (!(generatedSignalsOutput[i] != generatedSignalsOutput[i]))signalMap[pos.y + pos.x * Constants::mapSize] = generatedSignalsOutput[i];
-			else {
-				signalMap[pos.y + pos.x * Constants::mapSize] = 0;
-				aa++;
-			}
-			break;
+			//continue;
+		}
+
+		Rational attackGain = Constants::attackEnergyCost;
+		if (attackGain.b < 100) attackGain.multiply(100);
+		attackGain.a = attackGain.a * decisionOutput[i * 6 + TRANSFER];
+		transfer(i, attackGain);
+
+	    signalMap[pos.y + pos.x * Constants::mapSize] = decisionOutput[i * 6 + SIGNAL];
+		
+		Rational eatAmount = Constants::eatAmount;
+		if (eatAmount.b < 100) eatAmount.multiply(100);
+		eatAmount.a = eatAmount.a * decisionOutput[i * 6 + EAT];
+
+		eat(i, eatAmount);
+		Position2f posf = Position2f(decisionOutput[i * 6 + MOVE_X], decisionOutput[i * 6 + MOVE_Y]);
+		Position2f r = agents[i].currentPos;
+		agents[i].currentPos = agents[i].currentPos + posf;
+		if (abs(agents[i].currentPos.x) >= 1 || abs(agents[i].currentPos.y) >= 1) {
+			Position2i delta = agents[i].currentPos.to2i();
+			moveAgent(i, delta);
+			agents[i].currentPos = agents[i].currentPos - delta.to2f();
 		}
 	}
 
@@ -872,7 +848,7 @@ void Simulation::update() {
 	std::vector<size_t> toRemove;
 
 	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
-		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || agents[i].lifetime == 0) toRemove.push_back(i);
+		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || --agents[i].lifetime == 0) toRemove.push_back(i);
 	}
 
 	for (size_t i = 0; i < toRemove.size(); i++) {
@@ -923,7 +899,7 @@ void Simulation::printProfilerInfo() {
 		<< aa<<'\n'
 		<< "Actions: \n";
 
-	for (int i = 0; i < 9; i++) std::cout << (float)actionTracker[i] / agents.size() << '\n';
+	for (int i = 0; i < 6; i++) std::cout << (float)actionTracker[i] / agents.size() << '\n';
  
 }
 
@@ -946,11 +922,11 @@ float Simulation::getTotalFood() {
 
 }
 
-Rational Simulation::getFoodAt(Position pos) {
+Rational Simulation::getFoodAt(Position2i pos) {
 	return rationalMapFood[pos.y + pos.x * Constants::mapSize];
 }
 
-void Simulation::setFoodAt(Position pos, Rational r) {
+void Simulation::setFoodAt(Position2i pos, Rational r) {
 
 	rationalMapFood[pos.y + pos.x * Constants::mapSize] = r;
 
@@ -977,11 +953,11 @@ float Simulation::getAgenentEnergy() {
 	return total;
 }
 
-Rational Simulation::getMediumAt(Position pos) {
+Rational Simulation::getMediumAt(Position2i pos) {
 	return mediumMap[pos.y + pos.x * Constants::mapSize];
 }
 
-void Simulation::setMediumAt(Position pos,Rational value) {
+void Simulation::setMediumAt(Position2i pos,Rational value) {
 	mediumMap[pos.y + pos.x * Constants::mapSize] = value;
 }
 
@@ -995,8 +971,8 @@ float Simulation::getTotalMedium() {
 	return total.toFloat();
 }
 
-Position Simulation::randomUnoccupiedPosition() {
-	Position pos;
+Position2i Simulation::randomUnoccupiedPosition() {
+	Position2i pos;
 
 	do {
 		pos = randomPositionGenerator.next();

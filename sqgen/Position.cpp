@@ -1,6 +1,10 @@
 #include "Position.hpp"
 
-Position Position::left = Position(-1, 0);
-Position Position::right = Position(1, 0);
-Position Position::up = Position(0, -1);
-Position Position::down = Position(0, 1);
+Position2i Position2i::left = Position2i(-1, 0);
+Position2i Position2i::right = Position2i(1, 0);
+Position2i Position2i::up = Position2i(0, -1);
+Position2i Position2i::down = Position2i(0, 1);
+
+Position2f Position2i::to2f() {
+	return Position2f((float)x, (float)y);
+}

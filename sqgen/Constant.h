@@ -23,7 +23,7 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 2000;
 	constexpr size_t curandPoolSize = 10000;
-	const unsigned long seed = std::time(0);
+	const unsigned long seed = 556;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
@@ -52,7 +52,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 100;
+	constexpr size_t mapSize = 800;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
@@ -60,11 +60,11 @@ namespace Constants {
 	const float specieSignalMutationProb = 0.5;
 	const float specieSignalMutatuionAmplitude = 0.1;
 
-	const float agentMutationProbability = 0.10;
+	const float agentMutationProbability = 0.005;
 
 	const NetworkMutationDetails AP_MutationDetails = {
-		0.05,		// Non-zero mutation probability
-		0.05,		// Zero mutation probability
+		0.1,		// Non-zero mutation probability
+		0.1,		// Zero mutation probability
 		1		// Mutation Amplitude
 	};
 
@@ -75,23 +75,23 @@ namespace Constants {
 	};
 
 	const NetworkMutationDetails SIE_MutationDetails = {
-		0.05,		// Non-zero mutation probability
-		0.05,		// Zero mutation probability
+		0.1,		// Non-zero mutation probability
+		0.1,		// Zero mutation probability
 		1	// Mutation Amplitude
 	};
 
 	constexpr Rational initialMapFood = {  1, 2	};
 	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
-	const Rational eatAmount = { 1, 2 };
+	const Rational eatAmount = { 1, 1 };
 	const Rational moveEnergyCost = { 1, 8 }; // spilled
-	const Rational multiplyEnergyCost = { 15, 1 }; // this energy should also be included in the spillage
+	const Rational multiplyEnergyCost = { 2, 1 }; // this energy should also be included in the spillage
 
 	constexpr float FinitialMapFood = (float)initialMapFood.a / initialMapFood.b;
 	constexpr float FmaximumFood = (float)maximumFood.a / maximumFood.b;
 
 	const Rational attackEnergyCost = { 0,4 }; // make energy be spilled on the map
-	const Rational attackEnergyGain = { 3,1 };
+	const Rational attackEnergyGain = { 3*4,1 };
 
 	const Rational shareEnergyTransfer = { 1,2 };
 	const int shareRadius = 2;
@@ -105,7 +105,7 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	const int startingAgentCount = 1000;
+	const int startingAgentCount = 10000;
 
 	constexpr Rational mediumInitial = { 8,1 };
 

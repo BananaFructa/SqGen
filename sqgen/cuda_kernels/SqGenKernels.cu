@@ -114,8 +114,12 @@ __global__ void processAPSGInputs_kernel(
 			x = (x + mapSize) % mapSize;
 			y = (y + mapSize) % mapSize;
 			short logic = logicMap[i];
-			inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * (float)((logic & USE_SECOND) >> 5) / (float)(viewRange * (viewRange * 2 + 1));
-			inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * (float)((logic & USE_FIRST) >> 4) / (float)(viewRange * (viewRange * 2 + 1));
+			inputPool[(t * 10 + 6 + ((logic & 0b1100) >> 2))] += signalMap[y + x * mapSize] * (float)((logic & USE_SECOND) >> 5);
+			inputPool[(t * 10 + 6 + (logic & 0b11))] += signalMap[y + x * mapSize] * (float)((logic & USE_FIRST) >> 4);
+		}
+
+		for (size_t i = 0; i < 4; i++) {
+			inputPool[t * 10 + 6 + i] = max(min(inputPool[t * 10 + 6 + i], -1.0f), 1.0f);
 		}
 
 	}

@@ -16,9 +16,10 @@ struct Agent {
 	// Unique identifier for the specific agent used for resource managment
 	AgentResourceID id = 0;
 	// Pos
-	Position pos;
+	Position2i pos;
+	Position2f currentPos = Position2f(0,0);
 
-	Position lastPos;
+	Position2i lastPos;
 
 	size_t generation = 0;
 
