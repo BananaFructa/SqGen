@@ -102,14 +102,15 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t specieRepeat) {
 
 	if (hasVariables) {
-		concurrency::parallel_for((size_t)0, agentCount, [&](size_t i) {
+		//concurrency::parallel_for((size_t)0, agentCount, [&](size_t i) {
+		for (int i = 0;i < agentCount;i++) {
 			for (size_t r = 0; r < specieRepeat; r++) {
 				for (size_t j = 0; j < supermodel.paramCount; j++) {
 					Agent a = agents[i];
 					compiledData[j].setRef(i * specieRepeat + r, agentModelVariables[agents[i].specieId][j]);
 				}
 			}
-		});
+		}//);
 	}
 
 	if (hasStates) {
@@ -257,15 +258,13 @@ void NNAgentModelManager::registerAgent(AgentResourceID id) {
 
 }
 
-void NNAgentModelManager::loadSpiecie(const char* path, SpecieID id) {
+void NNAgentModelManager::loadSpiecie(std::vector<float> vars[], SpecieID id) {
 	if (!hasVariables) return;
-
-	std::string spath(path);
 
 	Tensor* tensorData = getVariableSet();
 
 	for (size_t i = 0; i < paramCount; i++) {
-		tensorData[i].load((spath + "/" + std::to_string(i) + ".npy").c_str());
+		tensorData[i].setValue(vars[i].data());
 	}
 
 	agentModelVariables[id] = tensorData;

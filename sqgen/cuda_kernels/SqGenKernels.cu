@@ -13,8 +13,8 @@ __global__ void processSIEInputs_kernel(
 	Array_DEVICE<short> logicMap,
 	Array_DEVICE<float> distanceMap,
 	TensorMap_DEVICE specieSignalMap, // Tensor which holds the specie signal that is present at each map position (signal size)
-	Array_DEVICE<int> xPositionSet, // X positions of the agents
-	Array_DEVICE<int> yPositionSet, // Y position of the agents
+	Array_DEVICE<short> xPositionSet, // X positions of the agents
+	Array_DEVICE<short> yPositionSet, // Y position of the agents
 	Tensor_DEVICE inputPool, // The input layer of the SIE (1, signal size,agent count * 4)
 	size_t viewRange,
 	size_t mapSize,
@@ -73,8 +73,8 @@ __global__ void processSIEInputs_kernel(
 
 __global__ void processAPSGInputs_kernel(
 	Array_DEVICE<short> logicMap,
-	Array_DEVICE<int> xPositionSet,
-	Array_DEVICE<int> yPositionSet,
+	Array_DEVICE<short> xPositionSet,
+	Array_DEVICE<short> yPositionSet,
 	Tensor_DEVICE SIE_Output,
 	Tensor_DEVICE foodMap,
 	Array_DEVICE<float> foodLevels,
@@ -130,8 +130,8 @@ void SqGenKernels::processSIEInputs(
 	Array_DEVICE<short> logicMap,
 	Array_DEVICE<float> distanceMap,
 	TensorMap_DEVICE specieSignalMap,
-	Array_DEVICE<int> xPositionSet,
-	Array_DEVICE<int> yPositionSet,
+	Array_DEVICE<short> xPositionSet,
+	Array_DEVICE<short> yPositionSet,
 	Tensor_DEVICE inputPool,
 	size_t viewRange,
 	size_t mapSize,
@@ -146,8 +146,8 @@ void SqGenKernels::processSIEInputs(
 
 void SqGenKernels::processAPSGInputs(
 	Array_DEVICE<short> logicMap,
-	Array_DEVICE<int> xPositionSet,
-	Array_DEVICE<int> yPositionSet,
+	Array_DEVICE<short> xPositionSet,
+	Array_DEVICE<short> yPositionSet,
 	Tensor_DEVICE SIE_Output,
 	Tensor_DEVICE foodMap,
 	Array_DEVICE<float> foodLevels,

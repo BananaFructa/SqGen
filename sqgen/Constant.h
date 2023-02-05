@@ -23,7 +23,7 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 2000;
 	constexpr size_t curandPoolSize = 10000;
-	const unsigned long seed = 556;
+	const unsigned long seed = 1;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
@@ -52,7 +52,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 800;
+	constexpr size_t mapSize = 500;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
@@ -80,7 +80,7 @@ namespace Constants {
 		1	// Mutation Amplitude
 	};
 
-	constexpr Rational initialMapFood = {  1, 2	};
+	constexpr Rational initialMapFood = {  1, 4	};
 	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
 	const Rational eatAmount = { 1, 1 };
@@ -105,7 +105,7 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	const int startingAgentCount = 10000;
+	const int startingAgentCount = 1000;
 
 	constexpr Rational mediumInitial = { 8,1 };
 

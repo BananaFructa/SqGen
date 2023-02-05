@@ -6,10 +6,11 @@
 
 #include "ha_models/layers/DenseLayer.hpp"
 
+#include <highfive/H5File.hpp>
+
 // 16.11.2022
 
-// TODO: fix the food kernel compile
-
+// TODO: SAVE COLORS
 int main() {
 
 	/*Tensor input;
@@ -48,11 +49,12 @@ int main() {
 	std::thread([&]() {
 		for (;;) {
 			if (simulation.agents.size() == 0) {
-				simulation.restartFoodMap();
-				for (int i = 0; i < Constants::startingAgentCount; i++) {
-					if ((i + 1) % 1000 == 0) std::cout << "Generating agents " << (i + 1) << '\n';
-					simulation.addNewAgent();
-				}
+				//simulation.restartFoodMap();
+				//for (int i = 0; i < Constants::startingAgentCount; i++) {
+				//	if ((i + 1) % 1000 == 0) std::cout << "Generating agents " << (i + 1) << '\n';
+				//	simulation.addNewAgent();
+				//}
+				simulation.loadSimulationState("simulationState.h5");
 			}
 			simulation.update();
 			renderMananger.updateRenderData();

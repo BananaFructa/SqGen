@@ -146,10 +146,10 @@ public:
 	
 	// Linearly memeory stored positions for gpu upload
 	// Used for input compiling
-	std::vector<int> xPositions;
-	std::vector<int> yPositions;
-	Array<int> gpuXPositions = Array<int>(Constants::nnPoolSize);
-	Array<int> gpuYPositions = Array<int>(Constants::nnPoolSize);
+	std::vector<short> xPositions;
+	std::vector<short> yPositions;
+	Array<short> gpuXPositions = Array<short>(Constants::nnPoolSize);
+	Array<short> gpuYPositions = Array<short>(Constants::nnPoolSize);
 
 	std::vector<float> foodLevels;
 	Array<float> gpuFoodLevels = Array<float>(Constants::nnPoolSize);
@@ -190,7 +190,6 @@ public:
 	std::map<SpecieID, Tensor> specieSignalDict;
 
 	std::map<SpecieID, SpecieID> specieConrelationMap;
-
 	// Allocator for specie signals
 	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(1, Constants::spicieSignalCount));
 
@@ -199,6 +198,7 @@ public:
 	SpecieID specieCounter = 1;
 	AgentResourceID lastAgentID = 1;
 	std::vector<AgentResourceID> avalabileAgentIDs;
+	std::vector<SpecieID> specieIDs;
 	std::map<SpecieID, size_t> specieInstaceCounter;
 
 //  =======================================================================
@@ -272,4 +272,7 @@ public:
 	float getTotalMedium();
 
 	Position2i randomUnoccupiedPosition();
+
+	void saveSimulationState(const char* path);
+	void loadSimulationState(const char* path);
 };

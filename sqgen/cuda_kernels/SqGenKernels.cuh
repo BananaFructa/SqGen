@@ -19,8 +19,8 @@ namespace SqGenKernels {
 		Array_DEVICE<short> logicMap,
 		Array_DEVICE<float> distanceMap,
 		TensorMap_DEVICE specieSignalMap,
-		Array_DEVICE<int> xPositionSet,
-		Array_DEVICE<int> yPositionSet,
+		Array_DEVICE<short> xPositionSet,
+		Array_DEVICE<short> yPositionSet,
 		Tensor_DEVICE inputPool,
 		size_t viewRange,
 		size_t mapSize,
@@ -30,8 +30,8 @@ namespace SqGenKernels {
 
 	void processAPSGInputs(
 		Array_DEVICE<short> logicMap,
-		Array_DEVICE<int> xPositionSet,
-		Array_DEVICE<int> yPositionSet,
+		Array_DEVICE<short> xPositionSet,
+		Array_DEVICE<short> yPositionSet,
 		Tensor_DEVICE SIE_Output,
 		Tensor_DEVICE foodMap,
 		Array_DEVICE<float> foodLevels,

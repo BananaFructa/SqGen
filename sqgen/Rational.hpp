@@ -100,4 +100,12 @@ struct Rational {
 		b *= m;
 	}
 
+	long long numerator() {
+		return a;
+	}
+
+	long long denominator() {
+		return b;
+	}
+
 };

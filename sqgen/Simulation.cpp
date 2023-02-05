@@ -8,6 +8,9 @@
 #include <string>
 #include <ppl.h>
 
+#include "highfive/H5File.hpp"
+
+
 int aa = 0;
 
 /*
@@ -23,6 +26,7 @@ int aa = 0;
 #define AP_PREDICT_ROUTINE 4
 #define SG_PREDICT_ROUTINE 5
 #define DECISION_PROCESS_ROUTINE 6
+#define UPDATE_DELTA 7
 
 void Simulation::buildSIE(NNModel& model) {
 	model.disableDefInternalAlloc();
@@ -270,6 +274,26 @@ bool Simulation::addAgent(Agent parent) {
 	specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 	indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
 
+	Rational medium = mediumMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize];
+	mediumMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = { 0,1 };
+	Position2i delta = newAgent.pos - pos;
+
+	if (Constants::totalMapSize > agents.size()) {
+	for (int j = 0;j < Constants::mapSize;j++) {
+		for (int i = 1;i < Constants::mapSize; i++) {
+
+			Position2i now = delta * i + newAgent.pos + Position2i(j,j);
+			now.wrapPositive(Constants::mapSize, Constants::mapSize);
+			if (specieMap[now.y + now.x * Constants::mapSize] == NULL_ID) {
+				setMediumAt(now, getMediumAt(now) + medium);
+				return true;
+			}
+
+		}
+	}
+	}
+
+
 	return true;
 }
 
@@ -306,34 +330,12 @@ void Simulation::removeAgent(size_t index) {
 	indexMap[pos.y + pos.x * Constants::mapSize] = index;
 }
 
-SpecieID Simulation::loadSpecie(const char* path) {
-	SpecieID id = getSpecieID();
-
-	specieConrelationMap[id] = NULL;
-
-	std::string spath(path);
-
-	Tensor specieSignal;
-
-	specieSignal.load((spath + "/signal.npy").c_str());
-
-	SIE_Manager.loadSpiecie((spath + "/SIE").c_str(),id);
-	AP_Manager.loadSpiecie((spath + "/AP").c_str(),id);
-	SG_Manager.loadSpiecie((spath + "/SG").c_str(), id);
-
-	specieInstaceCounter[id] = 0;
-	specieSignalDict[id] = specieSignal;
-
-	return SpecieID();
-}
-
 SpecieID Simulation::newSpiecie(size_t parent) {
 	SpecieID id = getSpecieID();
 
 	Tensor specieSignal = specieSignalAllocator.getTensor();
 
 	specieConrelationMap[id] = parent;
-
 	if (parent == NULL_ID) {
 
 		// SIE init
@@ -407,6 +409,7 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 		specieSignal.clamp(-Constants::specieSignalAmplitude, Constants::specieSignalAmplitude);
 	}
 
+	specieIDs.push_back(id);
 	specieInstaceCounter[id] = 0;
 	specieSignalDict[id] = specieSignal;
 
@@ -425,6 +428,7 @@ void Simulation::eraseSpecieMember(SpecieID specie) {
 		specieInstaceCounter.erase(specie);
 		specieSignalAllocator.freeTensor(specieSignalDict[specie]);
 		specieSignalDict.erase(specie);
+		specieIDs.erase(std::find(specieIDs.begin(), specieIDs.end(), specie));
 		specieConrelationMap.erase(specie);
 	}
 }
@@ -640,7 +644,7 @@ void Simulation::pipelineToAPSG(size_t from, size_t to) {
 
 	profiler.start(COMPILE_ROUTINE);
 	SIE_Manager.compile(&agents[from], to - from, 4);
-	SG_Manager.compile(&agents[from], to - from);
+	//SG_Manager.compile(&agents[from], to - from);
 	AP_Manager.compile(&agents[from], to - from);
 
 	gpuXPositions.slice(0,to - from).setValue(&xPositions[from]);
@@ -719,11 +723,11 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	Tensor slicedAPSG = APSG_InputPool.slice(0, to - from);
 	// What the fuck
 
-	gpuSync();
+	//gpuSync();
 
-	profiler.start(SG_PREDICT_ROUTINE);
-	Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
-	profiler.end(SG_PREDICT_ROUTINE);
+	//profiler.start(SG_PREDICT_ROUTINE);
+	//Tensor generatedSignals = SG_Manager.predict(slicedAPSG);
+	//profiler.end(SG_PREDICT_ROUTINE);
 
 	gpuSync();
 
@@ -734,7 +738,7 @@ void Simulation::runAPSGAndProcessDecisions(size_t from, size_t to) {
 	gpuSync();
 
 	decisions.getValue(&decisionOutput[from*6]);
-	generatedSignals.getValue(&generatedSignalsOutput[from]);
+	//generatedSignals.getValue(&generatedSignalsOutput[from]);
 
 }
 
@@ -744,6 +748,8 @@ void Simulation::update() {
 
 	if (paused && !step) return;
 	if (step) step = !step;
+
+	profiler.start(UPDATE_DELTA);
 
 	aa++;
 
@@ -855,6 +861,8 @@ void Simulation::update() {
 		removeAgent(toRemove[i]);
 	}
 
+	profiler.end(UPDATE_DELTA);
+
 	printProfilerInfo();
 	// TODO: AAAAAAAAAAAAAAAAAAAa
 }
@@ -892,6 +900,7 @@ void Simulation::printProfilerInfo() {
 		<< "AP Predict: " << profiler.get(AP_PREDICT_ROUTINE) << " ms\n"
 		<< "SG Predict: " << profiler.get(SG_PREDICT_ROUTINE) << " ms\n"
 		<< "Decision processing: " << profiler.get(DECISION_PROCESS_ROUTINE) << " ms\n"
+		<< "Update delta: " << profiler.get(UPDATE_DELTA) << " ms\n"
 		<< "Total simulation food: " << getTotalFood() << '\n'
 		<< "Total simulation medium: " << getTotalMedium() << '\n'
 		<< "Agent energy: " <<ae << '\n'
@@ -983,4 +992,264 @@ Position2i Simulation::randomUnoccupiedPosition() {
 
 void Simulation::togglePause() {
 	paused = !paused;
+}
+
+void Simulation::saveSimulationState(const char* path) {
+	HighFive::File file(path, HighFive::File::Overwrite);
+
+	std::vector<long long> numerators(Constants::totalMapSize);
+	std::vector<long long> denominators(Constants::totalMapSize);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		numerators[i] = rationalMapFood[i].numerator();
+		denominators[i] = rationalMapFood[i].denominator();
+	}
+
+	file.createDataSet("sqgen/maps/energy/numerators", numerators);
+	file.createDataSet("sqgen/maps/energy/denominators", denominators);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		numerators[i] = mediumMap[i].numerator();
+		denominators[i] = mediumMap[i].denominator();
+	}
+
+	file.createDataSet("sqgen/maps/medium/numerators", numerators);
+	file.createDataSet("sqgen/maps/medium/denominators", denominators);
+
+	std::vector<float> signalMapVec(Constants::totalMapSize);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		signalMapVec[i] = signalMap[i];
+	}
+
+	file.createDataSet("sqgen/maps/signal", signalMapVec);
+
+	file.createDataSet("sqgen/agents/count", agents.size());
+	file.createDataSet("sqgen/agents/spiecie_counter", specieCounter);
+
+	std::vector<short> posX(agents.size());
+	std::vector<short> posY(agents.size());
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		posX[i] = agents[i].pos.x;
+		posY[i] = agents[i].pos.y;
+	}
+
+	file.createDataSet("sqgen/agents/x", posX);
+	file.createDataSet("sqgen/agents/y", posY);
+
+	std::vector<SpecieID> spiecies(agents.size());
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		spiecies[i] = agents[i].specieId;
+	}
+
+	file.createDataSet("sqgen/agents/spiecie_ids", spiecies);
+
+	std::vector<short> lastX(agents.size());
+	std::vector<short> lastY(agents.size());
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		lastX[i] = agents[i].lastPos.x;
+		lastY[i] = agents[i].lastPos.y;
+	}
+
+	file.createDataSet("sqgen/agents/last_x", lastX);
+	file.createDataSet("sqgen/agents/last_y", lastY);
+
+	std::vector<float> progX(agents.size());
+	std::vector<float> progY(agents.size());
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		progX[i] = agents[i].currentPos.x;
+		progY[i] = agents[i].currentPos.y;
+	}
+
+	file.createDataSet("sqgen/agents/prog_x", progX);
+	file.createDataSet("sqgen/agents/prog_y", progY);
+
+	std::vector<size_t> generations(agents.size());
+	std::vector<size_t> lifetimes(agents.size());
+
+	std::vector<long long> foodN(agents.size());
+	std::vector<long long> foodD(agents.size());
+
+	for (size_t i = 0; i < agents.size(); i++) {
+		generations[i] = agents[i].generation;
+		lifetimes[i] = agents[i].lifetime;
+		foodN[i] = agents[i].food.numerator();
+		foodD[i] = agents[i].food.denominator();
+	}
+
+
+	file.createDataSet("sqgen/agents/generations", generations);
+	file.createDataSet("sqgen/agents/lifetimes", lifetimes);
+	file.createDataSet("sqgen/agents/energy/numerator", foodN);
+	file.createDataSet("sqgen/agents/energy/denominator", foodD);
+
+	file.createDataSet("sqgen/species/specie_count/", specieIDs.size());
+	file.createDataSet("sqgen/species/specie_list/", specieIDs);
+
+	std::string speciePath("sqgen/species/");
+
+	for (size_t i = 0; i < specieIDs.size(); i++) {
+
+		SpecieID id = specieIDs[i];
+
+		std::string currentS = speciePath + std::to_string(i) + "/";
+
+		std::vector<float> signal(Constants::spicieSignalCount);
+
+		specieSignalDict[id].getValue(signal.data());
+
+		file.createDataSet(currentS + "signal", signal);
+
+		Tensor* varsSIE = SIE_Manager.agentModelVariables[id];
+
+		for (size_t j = 0; j < SIE_Manager.paramCount; j++) {
+			std::vector<float> p(varsSIE[j].size.size);
+			varsSIE[j].getValue(p.data());
+			file.createDataSet(currentS + "SIE/params/p" + std::to_string(j), p);
+		}
+
+		Tensor* varsAP = AP_Manager.agentModelVariables[id];
+
+		for (size_t j = 0; j < AP_Manager.paramCount; j++) {
+			std::vector<float> p(varsAP[j].size.size);
+			varsAP[j].getValue(p.data());
+			file.createDataSet(currentS + "AP/params/p" + std::to_string(j), p);
+		}
+
+	}
+
+}
+
+void Simulation::loadSimulationState(const char* path) {
+
+	while (agents.size() != 0) removeAgent(0); // Dump all agent related data
+	specieInstaceCounter.clear();
+
+	HighFive::File file(path, HighFive::File::ReadOnly);
+
+	std::vector<long long> numerators;
+	std::vector<long long> denominators;
+
+	file.getDataSet("sqgen/maps/energy/numerators").read(numerators);
+	file.getDataSet("sqgen/maps/energy/denominators").read(denominators);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+
+		rationalMapFood[i] = { numerators[i] , denominators[i] };
+
+	}
+
+	file.getDataSet("sqgen/maps/medium/numerators").read(numerators);
+	file.getDataSet("sqgen/maps/medium/denominators").read(denominators);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+
+		mediumMap[i] = { numerators[i] , denominators[i] };
+
+	}
+
+	std::vector<float> signalMapVec;
+
+	file.getDataSet("sqgen/maps/signal").read(signalMapVec);
+
+	for (size_t i = 0; i < Constants::totalMapSize; i++) {
+		signalMap[i] = signalMapVec[i];
+	}
+
+	size_t agentCount;
+
+	file.getDataSet("sqgen/agents/count").read(agentCount);
+	file.getDataSet("sqgen/agents/spiecie_counter").read(specieCounter);
+
+	std::vector<short> posX;
+	std::vector<short> posY;
+	std::vector<SpecieID> spiecies;
+	std::vector<short> lastX;
+	std::vector<short> lastY;
+	std::vector<float> progX;
+	std::vector<float> progY;
+	std::vector<size_t> generations;
+	std::vector<size_t> lifetimes;
+	std::vector<long long> foodN;
+	std::vector<long long> foodD;
+
+	file.getDataSet("sqgen/agents/x").read(posX);
+	file.getDataSet("sqgen/agents/y").read(posY);
+	file.getDataSet("sqgen/agents/spiecie_ids").read(spiecies);
+	file.getDataSet("sqgen/agents/last_x").read(lastX);
+	file.getDataSet("sqgen/agents/last_y").read(lastY);
+	file.getDataSet("sqgen/agents/prog_x").read(progX);
+	file.getDataSet("sqgen/agents/prog_y").read(progY);
+	file.getDataSet("sqgen/agents/generations").read(generations);
+	file.getDataSet("sqgen/agents/lifetimes").read(lifetimes);
+	file.getDataSet("sqgen/agents/energy/numerator").read(foodN);
+	file.getDataSet("sqgen/agents/energy/denominator").read(foodD);
+
+	size_t specieIDscount;
+
+	file.getDataSet("sqgen/species/specie_count/").read(specieIDscount);
+	file.getDataSet("sqgen/species/specie_list/").read(specieIDs);
+
+	std::string speciePath("sqgen/species/");
+
+	for (size_t i = 0; i < specieIDs.size(); i++) {
+
+		SpecieID id = specieIDs[i];
+
+		std::string currentS = speciePath + std::to_string(i) + "/";
+
+		std::vector<float> signal(Constants::spicieSignalCount);
+
+		file.getDataSet(currentS + "signal").read(signal);
+
+		Tensor sig(Size(2, 1, Constants::spicieSignalCount));
+		sig.setValue(signal.data());
+
+		specieSignalDict[id] = sig;
+
+		std::vector<std::vector<float>> paramsSIE(SIE_Manager.paramCount);
+
+		for (size_t j = 0; j < SIE_Manager.paramCount; j++) {
+			file.getDataSet(currentS + "SIE/params/p" + std::to_string(j)).read(paramsSIE[j]);
+		}
+
+		SIE_Manager.loadSpiecie(paramsSIE.data(), id);
+
+
+		std::vector<std::vector<float>> paramsAP(AP_Manager.paramCount);
+
+		for (size_t j = 0; j < AP_Manager.paramCount; j++) {
+			file.getDataSet(currentS + "AP/params/p" + std::to_string(j)).read(paramsAP[j]);
+		}
+
+		AP_Manager.loadSpiecie(paramsAP.data(), id);
+
+	}
+
+	for (size_t i = 0; i < agentCount; i++) {
+		AgentResourceID id = getAgentID();
+
+		SIE_Manager.registerAgent(id);
+		SG_Manager.registerAgent(id);
+		AP_Manager.registerAgent(id);
+
+		Position2i pos(posX[i], posY[i]);
+		Position2f prog(progX[i], progY[i]);
+		Position2i lastPos(lastX[i], lastY[i]);
+
+		Agent newAgent = { spiecies[i],id,pos,prog,lastPos,generations[i],{foodN[i],foodD[i]},lifetimes[i]};
+
+		agents.push_back(newAgent);
+		xPositions.push_back(newAgent.pos.x);
+		yPositions.push_back(newAgent.pos.y);
+		foodLevels.push_back(newAgent.food.toFloat());
+		specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
+		indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
+		specieInstaceCounter[spiecies[i]] = 1;
+	}
+
 }

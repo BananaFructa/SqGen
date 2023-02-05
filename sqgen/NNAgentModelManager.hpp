@@ -66,7 +66,7 @@ public:
 	void eraseAgent(AgentResourceID id);
 	void registerAgent(AgentResourceID id);
 
-	void loadSpiecie(const char* path, SpecieID id);
+	void loadSpiecie(std::vector<float> vars[], SpecieID id);
 	void loadState(const char* path, AgentResourceID id);
 
 	void cleanup();
