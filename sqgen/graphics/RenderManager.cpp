@@ -14,16 +14,6 @@ void RenderManager::updateRenderData() {
     for (size_t l = 0; l < Constants::totalMapSize; l++) {
         size_t i = l / Constants::mapSize;
         size_t j = l % Constants::mapSize;
-        {
-            SpecieID id = specieMap[j + i * Constants::mapSize];
-            sf::Color color;
-            if (id != 0 && !colorPalette.count(id)) {
-                SpecieID parent = SimulationToRender.getParentSpecie(id);
-                if (parent == NULL_ID) color = randomAgentColor();
-                else color = mutateColor(colorPalette[parent]);
-                colorPalette[id] = color;
-            }
-        }
         max = std::max(foodMap[j + i * Constants::mapSize], max);
     }
 
@@ -59,8 +49,11 @@ void RenderManager::updateRenderData() {
             int x = l / Constants::mapSize;
             int y = l % Constants::mapSize;
             SpecieID id = specieMap[y + x * Constants::mapSize];
-            sf::Color color = colorPalette[id];
-
+            sf::Color color(0, 0, 0, 0);
+            if (id != NULL_ID) {
+                Color c = SimulationToRender.specieColorPallete[id];
+                color = sf::Color(c.r, c.g, c.b);
+            }
             backAgent[(y + x * Constants::mapSize) * 4].color = color;
             backAgent[(y + x * Constants::mapSize) * 4 + 1].color = color;
             backAgent[(y + x * Constants::mapSize) * 4 + 2].color = color;
@@ -140,6 +133,10 @@ void RenderManager::RunEvent(sf::Event Event) {
     if (Event.type == sf::Event::Closed)
         Window.close();
 
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::T)) {
+        shouldSave = true;
+    }
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
         CameraPosition.y -= 2.0f;
     }
@@ -154,8 +151,8 @@ void RenderManager::RunEvent(sf::Event Event) {
     }
 
     if (Event.type == sf::Event::MouseWheelMoved) {
-        if (Event.mouseWheel.delta > 0) FieldOfView++;
-        if (Event.mouseWheel.delta < 0) FieldOfView--;
+        if (Event.mouseWheel.delta > 0) FieldOfView += 0.2f;
+        if (Event.mouseWheel.delta < 0) FieldOfView -= 0.2f;
         FOVChanged();
     }
 

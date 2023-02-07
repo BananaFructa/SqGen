@@ -13,6 +13,31 @@
 
 int aa = 0;
 
+Color randomAgentColor() {
+	return Color(Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60);
+}
+
+const int colorChangeAmplitude = 35;
+
+int mutateChannel(int c) {
+	if (c >= 255 - (colorChangeAmplitude - 1) / 2) {
+		c -= Random::randomInt() % colorChangeAmplitude;
+	}
+	else if (c <= 60 + (colorChangeAmplitude - 1) / 2) {
+		c += Random::randomInt() % colorChangeAmplitude;
+	}
+	else {
+		c += Random::randomInt() % colorChangeAmplitude - (colorChangeAmplitude - 1) / 2;
+	}
+	return c;
+}
+
+Color mutateColor(Color color) {
+
+	return Color(mutateChannel(color.r), mutateChannel(color.g), mutateChannel(color.b));
+
+}
+
 /*
 * 1) Sort by probability
 * 2) Run actions, decrease if enough set to 0 otherwise
@@ -338,6 +363,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 	specieConrelationMap[id] = parent;
 	if (parent == NULL_ID) {
 
+		specieColorPallete[id] = randomAgentColor();
+
 		// SIE init
 		SIE_Manager.registerNewSpiece(
 			id,
@@ -371,6 +398,8 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 
 	}
 	else {
+		specieColorPallete[id] = mutateColor(specieColorPallete[parent]);
+
 		SIE_Manager.registerSpecie(
 			parent,
 			id,
@@ -380,14 +409,14 @@ SpecieID Simulation::newSpiecie(size_t parent) {
 			Constants::SIE_MutationDetails.zeroMutationProbability
 		);
 		
-		SG_Manager.registerSpecie(
-			parent,
-			id,
-			Constants::SG_MutationDetails.mutationProbability,
-			-Constants::SG_MutationDetails.mutationAmplitude,
-			Constants::SG_MutationDetails.mutationAmplitude,
-			Constants::SG_MutationDetails.zeroMutationProbability
-		);
+		//SG_Manager.registerSpecie(
+		//	parent,
+		//	id,
+		//	Constants::SG_MutationDetails.mutationProbability,
+		//	-Constants::SG_MutationDetails.mutationAmplitude,
+		//	Constants::SG_MutationDetails.mutationAmplitude,
+		//	Constants::SG_MutationDetails.zeroMutationProbability
+		//);
 
 		AP_Manager.registerSpecie(
 			parent,
@@ -995,7 +1024,11 @@ void Simulation::togglePause() {
 }
 
 void Simulation::saveSimulationState(const char* path) {
+	std::cout << "Saving simulation state...\n";
+
 	HighFive::File file(path, HighFive::File::Overwrite);
+
+	file.createDataSet("sqgen/time", aa);
 
 	std::vector<long long> numerators(Constants::totalMapSize);
 	std::vector<long long> denominators(Constants::totalMapSize);
@@ -1098,6 +1131,12 @@ void Simulation::saveSimulationState(const char* path) {
 
 		std::string currentS = speciePath + std::to_string(i) + "/";
 
+		Color c = specieColorPallete[id];
+
+		std::vector<char> rgb{c.r,c.g,c.b};
+
+		file.createDataSet(currentS + "color", rgb);
+
 		std::vector<float> signal(Constants::spicieSignalCount);
 
 		specieSignalDict[id].getValue(signal.data());
@@ -1121,15 +1160,20 @@ void Simulation::saveSimulationState(const char* path) {
 		}
 
 	}
+	std::cout << "Saved!\n";
 
 }
 
 void Simulation::loadSimulationState(const char* path) {
 
+	std::cout << "Loading simulation state...\n";
+
 	while (agents.size() != 0) removeAgent(0); // Dump all agent related data
 	specieInstaceCounter.clear();
 
 	HighFive::File file(path, HighFive::File::ReadOnly);
+
+	file.getDataSet("sqgen/time").read(aa);
 
 	std::vector<long long> numerators;
 	std::vector<long long> denominators;
@@ -1202,6 +1246,12 @@ void Simulation::loadSimulationState(const char* path) {
 
 		std::string currentS = speciePath + std::to_string(i) + "/";
 
+		std::vector<char> rgb;
+
+		file.getDataSet(currentS + "color").read(rgb);
+
+		specieColorPallete[id] = Color(rgb[0], rgb[1], rgb[2]);
+
 		std::vector<float> signal(Constants::spicieSignalCount);
 
 		file.getDataSet(currentS + "signal").read(signal);
@@ -1249,7 +1299,9 @@ void Simulation::loadSimulationState(const char* path) {
 		foodLevels.push_back(newAgent.food.toFloat());
 		specieMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = newAgent.specieId;
 		indexMap[newAgent.pos.y + newAgent.pos.x * Constants::mapSize] = agents.size() - 1;
-		specieInstaceCounter[spiecies[i]] = 1;
+		if (!specieInstaceCounter.count(spiecies[i])) specieInstaceCounter[spiecies[i]] = 0;
+		registerNewSpecieMember(spiecies[i]);
 	}
+	std::cout << "Loaded\n";
 
 }

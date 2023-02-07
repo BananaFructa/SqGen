@@ -79,27 +79,3 @@ void genVertexArray(sf::VertexArray& arr) {
     }
 }
 
-sf::Color randomAgentColor() {
-    return sf::Color(Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60);
-}
-
-const int colorChangeAmplitude = 35;
-
-int mutateChannel(int c) {
-    if (c >= 255 - (colorChangeAmplitude - 1) / 2) {
-        c -= Random::randomInt() % colorChangeAmplitude;
-    }
-    else if (c <= 60 + (colorChangeAmplitude - 1) / 2) {
-        c += Random::randomInt() % colorChangeAmplitude;
-    }
-    else {
-        c += Random::randomInt() % colorChangeAmplitude - (colorChangeAmplitude-1)/2;
-    }
-    return c;
-}
-
-sf::Color mutateColor(sf::Color color) {
-
-    return sf::Color(mutateChannel(color.r),mutateChannel(color.g),mutateChannel(color.b));
-
-}

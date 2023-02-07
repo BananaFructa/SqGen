@@ -71,6 +71,8 @@ private:
 
 public:
 
+	bool shouldSave = false;
+
 	RenderManager(Simulation& sim);
 
 	sf::RenderWindow Window;

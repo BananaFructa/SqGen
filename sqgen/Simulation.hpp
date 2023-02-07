@@ -106,6 +106,20 @@
 		   |________________________________|___________________________________________________|
 */
 
+struct Color {
+	char r;
+	char g;
+	char b;
+	Color(char r, char g, char b) {
+		this->r = r;
+		this->g = g;
+		this->b = b;
+	}
+	Color() {
+
+	}
+};
+
 struct Simulation {
 public:
 //  =======================================================================
@@ -190,6 +204,8 @@ public:
 	std::map<SpecieID, Tensor> specieSignalDict;
 
 	std::map<SpecieID, SpecieID> specieConrelationMap;
+
+	std::map<SpecieID, Color> specieColorPallete;
 	// Allocator for specie signals
 	TensorMemAllocator<Tensor> specieSignalAllocator = TensorMemAllocator<Tensor>(Size(1, Constants::spicieSignalCount));
 
