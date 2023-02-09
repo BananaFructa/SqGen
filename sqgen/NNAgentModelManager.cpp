@@ -102,15 +102,14 @@ NNAgentModelManager::NNAgentModelManager(NNModel model, CurandManager manager) {
 void NNAgentModelManager::compile(Agent agents[], size_t agentCount, size_t specieRepeat) {
 
 	if (hasVariables) {
-		//concurrency::parallel_for((size_t)0, agentCount, [&](size_t i) {
-		for (int i = 0;i < agentCount;i++) {
+		concurrency::parallel_for((size_t)0, agentCount, [&](size_t i) {
 			for (size_t r = 0; r < specieRepeat; r++) {
 				for (size_t j = 0; j < supermodel.paramCount; j++) {
 					Agent a = agents[i];
 					compiledData[j].setRef(i * specieRepeat + r, agentModelVariables[agents[i].specieId][j]);
 				}
 			}
-		}//);
+		});
 	}
 
 	if (hasStates) {

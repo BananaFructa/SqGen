@@ -16,6 +16,7 @@ int ticks = 1;
 // TODO: SAVE COLORS
 int main() {
 
+
 	/*Tensor input;
 	input.load("input.npy");
 	input = input.slice(1831,1832);
