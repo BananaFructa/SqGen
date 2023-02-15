@@ -171,6 +171,8 @@ public:
 
 //  =======================================================================
 
+	float* attackMap = new float[Constants::totalMapSize];
+
 	// ======
 	// Used to avoid kernel bracnhes holds
 	// Holds the directions to which the signal from the relative position should be attributed 
@@ -267,6 +269,7 @@ public:
 
 	float* getFoodMap();
 	float* getSignalMap();
+	float* getAttackMap();
 	SpecieID* getSpecieMap();
 
 	std::vector<Agent>& getAgents();

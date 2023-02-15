@@ -17,7 +17,7 @@ Color randomAgentColor() {
 	return Color(Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60, Random::randomInt() % 196 + 60);
 }
 
-const int colorChangeAmplitude = 35;
+const int colorChangeAmplitude = 13;
 
 int mutateChannel(int c) {
 	if (c >= 255 - (colorChangeAmplitude - 1) / 2) {
@@ -69,10 +69,11 @@ void Simulation::buildSG(NNModel& model) {
 
 void Simulation::buildAP(NNModel& model) {
 	model.disableDefInternalAlloc();
-	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 20, Activation::TANH));
+	model.addLayer(new DenseLayer(Constants::visualLatentSize * 4 + 4 + 1 + 1, 5, Activation::TANH));
 	//model.addLayer(new SimpleRecurrentLayer(10, 10, TANH, TANH));
-	model.addLayer(new DenseLayer(20, 10, Activation::TANH));
-	model.addLayer(new DenseLayer(10, 6, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 5, Activation::TANH));
+	model.addLayer(new DenseLayer(5, 6, Activation::TANH));
 }
 
 Simulation::Simulation() {
@@ -156,6 +157,7 @@ Simulation::Simulation() {
 		specieMap[i] = NULL_ID;
 		indexMap[i] = 0;
 		signalMap[i] = 0;
+		attackMap[i] = 0;
 		mediumMap[i] = Constants::mediumInitial;
 	}
 	
@@ -330,6 +332,7 @@ void Simulation::removeAgent(size_t index) {
 	// Non index based maps can be updated immediatly
 	signalMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;		 // These two make the agent invisible
 	specieMap[removed.pos.y + removed.pos.x * Constants::mapSize] = NULL_ID; // to the simulation
+	attackMap[removed.pos.y + removed.pos.x * Constants::mapSize] = 0;
 
 	agents[index] = agents[agents.size() - 1];
 	agents.pop_back();
@@ -499,7 +502,9 @@ void Simulation::addToAgentFood(size_t index, Rational food) {
 void Simulation::setAgentPos(size_t index, Position2i newPos) {
 	specieMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 	signalMap[newPos.y + newPos.x * Constants::mapSize] = signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize];
+	attackMap[newPos.y + newPos.x * Constants::mapSize] = attackMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize];
 	signalMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
+	attackMap[agents[index].pos.y + agents[index].pos.x * Constants::mapSize] = 0;
 
 	agents[index].lastPos = agents[index].pos;
 	agents[index].pos = newPos;
@@ -855,9 +860,10 @@ void Simulation::update() {
 			//continue;
 		}
 
-		Rational attackGain = Constants::attackEnergyCost;
+		Rational attackGain = Constants::attackEnergyGain;
 		if (attackGain.b < 100) attackGain.multiply(100);
 		attackGain.a = attackGain.a * decisionOutput[i * 6 + TRANSFER];
+		attackMap[pos.y + pos.x * Constants::mapSize] = decisionOutput[i * 6 + TRANSFER];
 		transfer(i, attackGain);
 
 	    signalMap[pos.y + pos.x * Constants::mapSize] = decisionOutput[i * 6 + SIGNAL];
@@ -883,7 +889,7 @@ void Simulation::update() {
 	std::vector<size_t> toRemove;
 
 	for (size_t i = agents.size() - 1; i < agents.size(); i--) {
-		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || --agents[i].lifetime == 0) toRemove.push_back(i);
+		if (agents[i].food <= Rational() || agents[i].food > Constants::maximumFood || --agents[i].lifetime <= 0) toRemove.push_back(i);
 	}
 
 	for (size_t i = 0; i < toRemove.size(); i++) {
@@ -910,6 +916,10 @@ SpecieID* Simulation::getSpecieMap() {
 
 float* Simulation::getSignalMap() {
 	return signalMap;
+}
+
+float* Simulation::getAttackMap() {
+	return attackMap;
 }
 
 std::vector<Agent>& Simulation::getAgents() {

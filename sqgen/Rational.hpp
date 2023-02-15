@@ -18,10 +18,10 @@ struct Rational {
 		if (b == r.b) {
 			return { a + r.a, b };
 		}
-		if (b > r.b && (b % r.b) == 0) {
+		if (b % r.b == 0) {
 			return { a + r.a * (b / r.b), b };
 		}
-		if (b < r.b && (r.b % b) == 0) {
+		if (r.b % b == 0) {
 			return { a * (r.b / b) + r.a, r.b };
 		}
 		return { a * r.b + r.a * b, b * r.b };

@@ -23,11 +23,11 @@ namespace Constants {
 
 	constexpr size_t nnPoolSize = 2000;
 	constexpr size_t curandPoolSize = 10000;
-	const unsigned long seed = 1;
+	const unsigned long seed = 1249;
 
 	// ========= NN INITIALIZATION AND INTERFACING CONSTANTS =======
 
-	constexpr size_t spicieSignalCount = 5;
+	constexpr size_t spicieSignalCount = 10;
 	constexpr float specieSignalAmplitude = 1;
 
 	constexpr size_t visualLatentSize = 1;
@@ -52,7 +52,7 @@ namespace Constants {
 
 	// =================== SIMULATION CONSTANTS =====================
 
-	constexpr size_t mapSize = 500;
+	constexpr size_t mapSize = 250;
 	constexpr size_t totalMapSize = mapSize * mapSize;
 
 	constexpr int agentObserveRange = 2;
@@ -60,11 +60,11 @@ namespace Constants {
 	const float specieSignalMutationProb = 0.5;
 	const float specieSignalMutatuionAmplitude = 0.1;
 
-	const float agentMutationProbability = 0.005;
+	const float agentMutationProbability = 0.01;
 
 	const NetworkMutationDetails AP_MutationDetails = {
-		0.1,		// Non-zero mutation probability
-		0.1,		// Zero mutation probability
+		0.01,		// Non-zero mutation probability
+		0.01,		// Zero mutation probability
 		1		// Mutation Amplitude
 	};
 
@@ -75,13 +75,13 @@ namespace Constants {
 	};
 
 	const NetworkMutationDetails SIE_MutationDetails = {
-		0.1,		// Non-zero mutation probability
-		0.1,		// Zero mutation probability
+		0.01,		// Non-zero mutation probability
+		0.01,		// Zero mutation probability
 		1	// Mutation Amplitude
 	};
 
 	constexpr Rational initialMapFood = {  1, 4	};
-	constexpr Rational maximumFood = { 20,1 }; // when dead the agent should spill
+	constexpr Rational maximumFood = { 10,1 }; // when dead the agent should spill
 	const Rational initialFood = { 1, 1 };
 	const Rational eatAmount = { 1, 1 };
 	const Rational moveEnergyCost = { 1, 8 }; // spilled
@@ -105,9 +105,9 @@ namespace Constants {
 		{0,1},			{0,1},			{1,10},		{0,1},			{0,1}
 	};
 
-	const int startingAgentCount = 1000;
+	const int startingAgentCount = 5000;
 
 	constexpr Rational mediumInitial = { 8,1 };
 
-	constexpr size_t agentLifetime = 500;
+	constexpr size_t agentLifetime = 1000;
 }

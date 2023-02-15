@@ -20,6 +20,7 @@ void RenderManager::updateRenderData() {
     if (paused) return;
 
     float* signalMap = SimulationToRender.getSignalMap();
+    float* attackMap = SimulationToRender.getAttackMap();
 
     sf::VertexArray& backFood = buffer.getBackFoodMap();
     sf::VertexArray& backAgent = buffer.getBackAgentMap();
@@ -44,7 +45,7 @@ void RenderManager::updateRenderData() {
         backFood[(j + i * Constants::mapSize) * 4 + 3].color = Color;
     }//);
 
-    if (!SignalMapMode) {
+    if (!SignalMapMode && !attackMapMode) {
         concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
             int x = l / Constants::mapSize;
             int y = l % Constants::mapSize;
@@ -64,7 +65,7 @@ void RenderManager::updateRenderData() {
         concurrency::parallel_for((size_t)0, Constants::totalMapSize, [&](size_t l) {
             int x = l / Constants::mapSize;
             int y = l % Constants::mapSize;
-            float s = signalMap[y + x * Constants::mapSize];
+            float s = (SignalMapMode ? signalMap[y + x * Constants::mapSize] : attackMap[y + x * Constants::mapSize]);
             float factor = (s + 1) / 2;
             sf::Color color(factor * 255, 0, (1 - factor) * 255);
 
@@ -203,5 +204,6 @@ void RenderManager::RunEvent(sf::Event Event) {
         if (Event.key.code == sf::Keyboard::I) paused = !paused;
         if (Event.key.code == sf::Keyboard::U) realFood = !realFood;
         if (Event.key.code == sf::Keyboard::Y) SimulationToRender.step = true;
+        if (Event.key.code == sf::Keyboard::R) attackMapMode = !attackMapMode;
     }
 }

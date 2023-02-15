@@ -68,6 +68,7 @@ private:
 
 	bool paused = false;
 	bool realFood = false;
+	bool attackMapMode = false;
 
 public:
 
