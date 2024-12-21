@@ -185,6 +185,7 @@ void NNAgentModelManager::registerNewSpiece(SpecieID id, float low, float high) 
 	if (!hasVariables) return;
 
 	Tensor* tensorData = getVariableSet();
+	while (!tensorData) tensorData = getVariableSet(); // <- Too lazy to fix this in a better as I really want to test the simulation
 
 	for (size_t i = 0; i < paramCount; i++) {
 

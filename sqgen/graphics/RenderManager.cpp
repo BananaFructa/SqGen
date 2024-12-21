@@ -112,19 +112,20 @@ void RenderManager::RenderLoop() {
         Window.clear();
 
         NormalizeViewport(Window, FieldOfView, CameraPosition);
+        if (!paused) {
+            Window.draw(buffer.getFrontFoodMap());
+            Window.draw(buffer.getFrontAgentMap());
 
-        Window.draw(buffer.getFrontFoodMap());
-        Window.draw(buffer.getFrontAgentMap());
+            NormalizeViewport(Window, FieldOfView, sf::Vector2f(Fract(CameraPosition.x), Fract(CameraPosition.y)));
 
-        NormalizeViewport(Window, FieldOfView, sf::Vector2f(Fract(CameraPosition.x), Fract(CameraPosition.y)));
+            IsGridDisplayed = FieldOfView > 7;
 
-        IsGridDisplayed = FieldOfView > 7;
+            if (IsGridDisplayed)
+                DrawGrid(Window, FieldOfView);
 
-        if (IsGridDisplayed)
-            DrawGrid(Window, FieldOfView);
-
-        cursorSprite.setPosition((sf::Vector2f)cursorPos - sf::Vector2f(0.05 + Constants::mapSize / 2,0.05 + Constants::mapSize / 2) - CameraPosition);
-        Window.draw(cursorSprite);
+            cursorSprite.setPosition((sf::Vector2f)cursorPos - sf::Vector2f(0.05 + Constants::mapSize / 2, 0.05 + Constants::mapSize / 2) - CameraPosition);
+            Window.draw(cursorSprite);
+        }
 
         Window.display();
     }
@@ -205,5 +206,8 @@ void RenderManager::RunEvent(sf::Event Event) {
         if (Event.key.code == sf::Keyboard::U) realFood = !realFood;
         if (Event.key.code == sf::Keyboard::Y) SimulationToRender.step = true;
         if (Event.key.code == sf::Keyboard::R) attackMapMode = !attackMapMode;
+        if (Event.key.code == sf::Keyboard::E) add = !add;
+        if (Event.key.code == sf::Keyboard::Up) SimulationToRender.addToMutation(0.01);
+        if (Event.key.code == sf::Keyboard::Down) SimulationToRender.addToMutation(-0.01);
     }
 }

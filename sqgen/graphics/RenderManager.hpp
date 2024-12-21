@@ -73,6 +73,7 @@ private:
 public:
 
 	bool shouldSave = false;
+	bool add = false;
 
 	RenderManager(Simulation& sim);
 

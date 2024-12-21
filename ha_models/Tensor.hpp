@@ -125,7 +125,7 @@ public:
 	void sumAllElementsAcrossDim(Tensor& sums);
 
 	/*
-	* @brief Normalizez all the elements in each sub-tensor defined by the indexing og the last dimesion
+	* @brief Normalizez all the elements in each sub-tensor defined by the indexing on the last dimesion
 	* @param sums = The tensor containing the sums across dimentions
 	*/
 	void normalizeAcrossDim(Tensor& sums);

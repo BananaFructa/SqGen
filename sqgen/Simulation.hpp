@@ -134,8 +134,8 @@ public:
 	NNModel SIE_Network = NNModel(Constants::nnPoolSize * 4);
 	NNAgentModelManager SIE_Manager;
 
-	NNModel SG_Network = NNModel(Constants::nnPoolSize);
-	NNAgentModelManager SG_Manager;
+	//NNModel SG_Network = NNModel(Constants::nnPoolSize);
+	//NNAgentModelManager SG_Manager;
 
 	// Action Processing
 	NNModel AP_Netowrk = NNModel(Constants::nnPoolSize);
@@ -167,6 +167,9 @@ public:
 
 	std::vector<float> foodLevels;
 	Array<float> gpuFoodLevels = Array<float>(Constants::nnPoolSize);
+
+	std::vector<float> normalLifetimes;
+	Array<float> gpuNormalLifetimes = Array<float>(Constants::nnPoolSize);
 
 
 //  =======================================================================
@@ -233,7 +236,7 @@ public:
 	float actionTracker[9] = {0};
 
 	void eat(size_t index,Rational amount);
-	void transfer(size_t index, Rational amount);
+	void transfer(size_t index, int amount, Rational quant);
 	void share(size_t index, Rational amount);
 	void addToAgentFood(size_t index, Rational food);
 	void setAgentPos(size_t index, Position2i newPos);
@@ -286,6 +289,8 @@ public:
 	void restartFoodMap();
 	float getAgenentEnergy();
 
+	void addEnergy(Rational r);
+
 	Rational getMediumAt(Position2i pos);
 	void setMediumAt(Position2i pos,Rational value);
 	float getTotalMedium();
@@ -294,4 +299,6 @@ public:
 
 	void saveSimulationState(const char* path);
 	void loadSimulationState(const char* path);
+
+	void addToMutation(float v);
 };

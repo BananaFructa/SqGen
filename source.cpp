@@ -51,11 +51,12 @@ int main() {
 
 	std::thread([&]() {
 		for (;;) {
-			if (simulation.agents.size() == 0) {
-				if ((std::ifstream("simulationState.h5")).good()) {
+			if (simulation.agents.size() == 0 || renderMananger.add) {
+				if ((std::ifstream("simulationState.h5")).good() && !renderMananger.add) {
 					simulation.loadSimulationState("simulationState.h5");
 				}
 				else {
+					renderMananger.add = false;
 					simulation.restartFoodMap();
 					for (int i = 0; i < Constants::startingAgentCount; i++) {
 						if ((i + 1) % 1000 == 0) std::cout << "Generating agents " << (i + 1) << '\n';
@@ -63,7 +64,7 @@ int main() {
 					}
 				}
 			}
-			if (renderMananger.shouldSave || (!simulation.paused && (ticks++) % 5000 == 0)) {
+			if (renderMananger.shouldSave) {
 				simulation.saveSimulationState("simulationState.h5");
 				renderMananger.shouldSave = false;
 			}

@@ -69,6 +69,10 @@ struct Position2f {
 		return Position2f(this->x * s, this->y * s);
 	}
 
+	const Position2f operator*(float s) const {
+		return Position2f(this->x * s, this->y * s);
+	}
+
 	const Position2f operator-() const {
 		return Position2f(-x, -y);
 	}
